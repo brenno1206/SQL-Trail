@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 import requests
@@ -18,10 +19,9 @@ GROQ_URL = os.getenv('GROQ_URL')
 with open('questoes.json', encoding='utf-8') as f:
     lista = json.load(f)
 QUESTOES = {q['id']: q for q in lista}
-CURRENT_QUESTION_ID = None
 
 app = Flask(__name__)
-app.config['TEMPLATES_AUTO_RELOAD'] = True
+CORS(app)
 
 def is_select(query: str) -> bool:
     return query.strip().lower().startswith('select')
@@ -135,25 +135,30 @@ def groq_validate(enunciado: str, base_sql: str, student_sql: str) -> bool:
 
     return False
 
+# Retorna JSON da questão
 @app.route('/question')
 def question():
     global CURRENT_QUESTION_ID
     q = random.choice(list(QUESTOES.values()))
     CURRENT_QUESTION_ID = q['id']
     return jsonify({'id': q['id'], 'enunciado': q['enunciado']})
-
+''' 
 @app.route('/')
 def index():
     return render_template('index.html')
+'''
 
+# Retorna JSON
 @app.route('/validate', methods=['POST'])
 def validate():
     data = request.get_json() or {}
 
-    if CURRENT_QUESTION_ID is None or CURRENT_QUESTION_ID not in QUESTOES:
-        return jsonify({'valid': False, 'error': 'Nenhuma questão carregada.'}), 400
+    question_id = data.get('question_id')
 
-    q = QUESTOES[CURRENT_QUESTION_ID]
+    if question_id is None or question_id not in QUESTOES:
+        return jsonify({'valid': False, 'error': 'Questão inválida ou não carregada.'}), 400
+
+    q = QUESTOES[question_id]
     base_sql = q['resposta_base']
     enunciado = q['enunciado']
     student_sql = data.get('student_sql', '').strip()
@@ -203,4 +208,4 @@ def validate():
     return jsonify(payload)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
