@@ -1,0 +1,30 @@
+# --- Arquivos de OS e IDEs ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Backend (Python) ---
+# Arquivos de ambiente virtual
+.venv/
+venv/
+*.pyc
+__pycache__/
+
+# --- Frontend (Node.js / React / Next) ---
+# Dependências
+frontend/node_modules/
+frontend/next-env.d.ts
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-error.log*
+
+# Build de produção
+frontend/build/
+frontend/dist/
+frontend/.next/
+
+# --- Arquivos de Segredos ---
+*.env
+*.env.local
