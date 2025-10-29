@@ -1,152 +1,70 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-
-import axios from 'axios';
-import { Footer } from '../components/Footer';
-import { TableDataWithTotal } from '@/types/Table';
-import { QuestionResponse, ValidateResponse } from '@/types/Response';
+import { Footer } from '@/components/Footer';
 import Header from '@/components/Header';
-import CodeArea from '@/components/CodeArea';
-import { ResultCard } from '@/components/ResultCard';
-import { MessageStatus } from '@/components/MessageStatus';
+import Link from 'next/link';
+// 1. Importe os ícones que deseja usar
+import { FaUsers, FaUniversity, FaUtensils, FaPiggyBank } from 'react-icons/fa';
 
-// --- Componente Principal ---
-export default function Home() {
-  const API_URL = 'http://127.0.0.1:5000';
-
-  // --- Estado para o conteúdo do editor ---
-  const [sqlQuery, setSqlQuery] = useState<string>('');
-  const [questionId, setQuestionId] = useState<number | null>(null);
-
-  // --- Estados para controlar a UI ---
-  const [enunciado, setEnunciado] = useState(
-    'Clique em Nova Questão para carregar um enunciado...',
-  );
-  const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // --- Estados para os resultados (com tipo específico) ---
-  const [alunoResult, setAlunoResult] = useState<TableDataWithTotal | null>(
-    null,
-  );
-  const [baseResult, setBaseResult] = useState<TableDataWithTotal | null>(null);
-  const [alunoFooter, setAlunoFooter] = useState('');
-  const [baseFooter, setBaseFooter] = useState('');
-
-  // --- Função para carregar uma nova questão (com Axios) ---
-  const carregarQuestao = useCallback(async () => {
-    setMessage('');
-    setIsLoading(false);
-
-    try {
-      const res = await axios.get<QuestionResponse>(`${API_URL}/question`);
-      const { enunciado, id } = res.data;
-
-      setEnunciado(enunciado);
-      setQuestionId(id);
-      setSqlQuery('');
-      setAlunoResult(null);
-      setBaseResult(null);
-      setAlunoFooter('');
-      setBaseFooter('');
-    } catch (err: unknown) {
-      let errorMessage = 'Erro ao carregar questão.';
-      if (axios.isAxiosError(err)) {
-        errorMessage = err.response?.data?.error || err.message;
-      } else if (err instanceof Error) {
-        errorMessage = err.message;
-      }
-      setMessage(errorMessage);
-    }
-  }, []);
-
-  // --- Função para validar a consulta (com Axios) ---
-  const validarConsulta = useCallback(async () => {
-    setIsLoading(true);
-    setMessage('');
-    setAlunoResult(null);
-    setBaseResult(null);
-    setAlunoFooter('');
-    setBaseFooter('');
-
-    const payload = { student_sql: sqlQuery, question_id: questionId };
-
-    try {
-      const res = await axios.post<ValidateResponse>(
-        `${API_URL}/validate`,
-        payload,
-      );
-      const json = res.data;
-
-      setMessage(json.message || json.error || 'Consulta processada.');
-
-      if (json.result_table) {
-        setAlunoResult(json.result_table);
-        setAlunoFooter(
-          `Mostrando ${json.result_table.rows.length} de ${json.result_table.total_rows} linhas`,
-        );
-      }
-      if (json.expected_table) {
-        setBaseResult(json.expected_table);
-        setBaseFooter(
-          `Mostrando ${json.expected_table.rows.length} de ${json.expected_table.total_rows} linhas`,
-        );
-      }
-    } catch (err: unknown) {
-      let errorMessage = 'Erro desconhecido ao validar.';
-      if (axios.isAxiosError(err)) {
-        errorMessage = err.response?.data?.error || err.message;
-      } else if (err instanceof Error) {
-        errorMessage = err.message;
-      }
-      setMessage(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sqlQuery, questionId]);
-
-  // --- Efeito para carregar a 1ª questão na montagem ---
-  useEffect(() => {
-    carregarQuestao();
-  }, [carregarQuestao]);
-
-  // --- Handler para mudança no editor ---
-  const onEditorChange = useCallback((value: string) => {
-    setSqlQuery(value);
-  }, []);
-
+export default function DatabasePage() {
   return (
-    <div className="flex min-h-screen flex-col bg-gray-100">
-      <Header carregarQuestao={carregarQuestao} />
-      <main className="flex flex-1 flex-col gap-8 px-10 py-10 md:flex-row">
-        <section className="flex flex-col space-y-4 md:w-1/2">
-          <div id="enunciado" className="rounded-lg bg-white p-4 shadow">
-            {enunciado}
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <Header />
+      <main className="grow container mx-auto px-4 py-12">
+        <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">
+          Selecione o Banco de Dados
+        </h1>
+
+        <section className="max-w-4xl mx-auto p-6 md:p-10 bg-white rounded-xl shadow-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+            {/* Database 1 */}
+            <Link
+              key={'recusosHumanos'}
+              href={`/recusosHumanos`}
+              className="group flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg shadow-md border border-gray-200 transition-all duration-300 hover:shadow-xl hover:bg-blue-50 hover:-translate-y-1"
+            >
+              <FaUsers className="text-4xl text-blue-600 mb-4 transition-colors group-hover:text-blue-700" />
+              <h3 className="text-xl font-semibold text-gray-700 group-hover:text-blue-700">
+                Recursos Humanos
+              </h3>
+            </Link>
+
+            {/* Database 2 */}
+            <Link
+              key={'Universidade'}
+              href={`/Universidade`}
+              className="group flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg shadow-md border border-gray-200 transition-all duration-300 hover:shadow-xl hover:bg-blue-50 hover:-translate-y-1"
+            >
+              <FaUniversity className="text-4xl text-blue-600 mb-4 transition-colors group-hover:text-blue-700" />
+              <h3 className="text-xl font-semibold text-gray-700 group-hover:text-blue-700">
+                Universidade
+              </h3>
+            </Link>
+
+            {/* Database 3 */}
+            <Link
+              key={'restaurante'}
+              href={`/restaurante`}
+              className="group flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg shadow-md border border-gray-200 transition-all duration-300 hover:shadow-xl hover:bg-blue-50 hover:-translate-y-1"
+            >
+              <FaUtensils className="text-4xl text-blue-600 mb-4 transition-colors group-hover:text-blue-700" />
+              <h3 className="text-xl font-semibold text-gray-700 group-hover:text-blue-700">
+                Restaurante
+              </h3>
+            </Link>
+
+            {/* Database 4 */}
+            <Link
+              key={'banco'}
+              href={`/banco`}
+              className="group flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg shadow-md border border-gray-200 transition-all duration-300 hover:shadow-xl hover:bg-blue-50 hover:-translate-y-1"
+            >
+              <FaPiggyBank className="text-4xl text-blue-600 mb-4 transition-colors group-hover:text-blue-700" />
+              <h3 className="text-xl font-semibold text-gray-700 group-hover:text-blue-700">
+                Banco
+              </h3>
+            </Link>
           </div>
-          <CodeArea
-            onEditorChange={onEditorChange}
-            validarConsulta={validarConsulta}
-            sqlQuery={sqlQuery}
-          />
-        </section>
-
-        <section className="flex flex-col space-y-6 md:w-1/2">
-          <MessageStatus isLoading={isLoading} message={message} />
-
-          <ResultCard
-            footer={alunoFooter}
-            placeholder={'Resultado do Aluno'}
-            result={alunoResult}
-          />
-          <ResultCard
-            footer={baseFooter}
-            placeholder={'Resultado Esperado'}
-            result={baseResult}
-          />
         </section>
       </main>
-
       <Footer />
     </div>
   );
