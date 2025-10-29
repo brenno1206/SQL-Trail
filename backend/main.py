@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -21,7 +21,7 @@ with open('questoes.json', encoding='utf-8') as f:
 QUESTOES = {q['id']: q for q in lista}
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"])
 
 def is_select(query: str) -> bool:
     return query.strip().lower().startswith('select')
@@ -106,7 +106,7 @@ def groq_validate(enunciado: str, base_sql: str, student_sql: str) -> bool:
             {'role': 'user', 'content': prompt_user}
         ],
         'temperature': 0.0,
-        'max_tokens': 10
+        'max_tokens': 5
     }
 
     try:
@@ -135,20 +135,14 @@ def groq_validate(enunciado: str, base_sql: str, student_sql: str) -> bool:
 
     return False
 
-# Retorna JSON da questão
 @app.route('/question')
 def question():
     global CURRENT_QUESTION_ID
     q = random.choice(list(QUESTOES.values()))
     CURRENT_QUESTION_ID = q['id']
     return jsonify({'id': q['id'], 'enunciado': q['enunciado']})
-''' 
-@app.route('/')
-def index():
-    return render_template('index.html')
-'''
 
-# Retorna JSON
+
 @app.route('/validate', methods=['POST'])
 def validate():
     data = request.get_json() or {}

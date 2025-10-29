@@ -1,65 +1,153 @@
-import Image from "next/image";
+'use client';
 
+import { useState, useEffect, useCallback } from 'react';
+
+import axios from 'axios';
+import { Footer } from '../components/Footer';
+import { TableDataWithTotal } from '@/types/Table';
+import { QuestionResponse, ValidateResponse } from '@/types/Response';
+import Header from '@/components/Header';
+import CodeArea from '@/components/CodeArea';
+import { ResultCard } from '@/components/ResultCard';
+import { MessageStatus } from '@/components/MessageStatus';
+
+// --- Componente Principal ---
 export default function Home() {
+  const API_URL = 'http://127.0.0.1:5000';
+
+  // --- Estado para o conteúdo do editor ---
+  const [sqlQuery, setSqlQuery] = useState<string>('');
+  const [questionId, setQuestionId] = useState<number | null>(null);
+
+  // --- Estados para controlar a UI ---
+  const [enunciado, setEnunciado] = useState(
+    'Clique em Nova Questão para carregar um enunciado...',
+  );
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // --- Estados para os resultados (com tipo específico) ---
+  const [alunoResult, setAlunoResult] = useState<TableDataWithTotal | null>(
+    null,
+  );
+  const [baseResult, setBaseResult] = useState<TableDataWithTotal | null>(null);
+  const [alunoFooter, setAlunoFooter] = useState('');
+  const [baseFooter, setBaseFooter] = useState('');
+
+  // --- Função para carregar uma nova questão (com Axios) ---
+  const carregarQuestao = useCallback(async () => {
+    setMessage('');
+    setIsLoading(false);
+
+    try {
+      const res = await axios.get<QuestionResponse>(`${API_URL}/question`);
+      const { enunciado, id } = res.data;
+
+      setEnunciado(enunciado);
+      setQuestionId(id);
+      setSqlQuery('');
+      setAlunoResult(null);
+      setBaseResult(null);
+      setAlunoFooter('');
+      setBaseFooter('');
+    } catch (err: unknown) {
+      let errorMessage = 'Erro ao carregar questão.';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.error || err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setMessage(errorMessage);
+    }
+  }, []);
+
+  // --- Função para validar a consulta (com Axios) ---
+  const validarConsulta = useCallback(async () => {
+    setIsLoading(true);
+    setMessage('');
+    setAlunoResult(null);
+    setBaseResult(null);
+    setAlunoFooter('');
+    setBaseFooter('');
+
+    const payload = { student_sql: sqlQuery, question_id: questionId };
+
+    try {
+      const res = await axios.post<ValidateResponse>(
+        `${API_URL}/validate`,
+        payload,
+      );
+      const json = res.data;
+
+      setMessage(json.message || json.error || 'Consulta processada.');
+
+      if (json.result_table) {
+        setAlunoResult(json.result_table);
+        setAlunoFooter(
+          `Mostrando ${json.result_table.rows.length} de ${json.result_table.total_rows} linhas`,
+        );
+      }
+      if (json.expected_table) {
+        setBaseResult(json.expected_table);
+        setBaseFooter(
+          `Mostrando ${json.expected_table.rows.length} de ${json.expected_table.total_rows} linhas`,
+        );
+      }
+    } catch (err: unknown) {
+      let errorMessage = 'Erro desconhecido ao validar.';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.error || err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setMessage(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sqlQuery, questionId]);
+
+  // --- Efeito para carregar a 1ª questão na montagem ---
+  useEffect(() => {
+    carregarQuestao();
+  }, [carregarQuestao]);
+
+  // --- Handler para mudança no editor ---
+  const onEditorChange = useCallback((value: string) => {
+    setSqlQuery(value);
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="flex min-h-screen flex-col bg-gray-100">
+      <Header carregarQuestao={carregarQuestao} />
+      <main className="flex flex-1 flex-col gap-8 px-10 py-10 md:flex-row">
+        <section className="flex flex-col space-y-4 md:w-1/2">
+          <div id="enunciado" className="rounded-lg bg-white p-4 shadow">
+            {enunciado}
+          </div>
+          <CodeArea
+            onEditorChange={onEditorChange}
+            validarConsulta={validarConsulta}
+            sqlQuery={sqlQuery}
+          />
+        </section>
+
+        <section className="flex flex-col space-y-6 md:w-1/2">
+          <MessageStatus isLoading={isLoading} message={message} />
+
+          <ResultCard
+            footer={alunoFooter}
+            placeholder={'Resultado do Aluno'}
+            result={alunoResult}
+          />
+          <ResultCard
+            footer={baseFooter}
+            placeholder={'Resultado Esperado'}
+            result={baseResult}
+          />
+        </section>
       </main>
+
+      <Footer />
     </div>
   );
 }
