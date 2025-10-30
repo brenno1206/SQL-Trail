@@ -14,6 +14,7 @@ export default function CodeArea({
 }: CodeAreaProps) {
   return (
     <article className="overflow-hidden rounded-lg bg-white shadow">
+      {/*TODO: Adicionar possibilidade de mudar para o tema escuro */}
       <CodeMirror
         value={sqlQuery}
         height="45vh"

@@ -16,6 +16,7 @@ export default function Home() {
 
   // --- Estado para o conteúdo do editor ---
   const [sqlQuery, setSqlQuery] = useState<string>('');
+  // TODO: mudar para tupla de id e slug
   const [questionId, setQuestionId] = useState<number | null>(null);
 
   // --- Estados para controlar a UI ---
@@ -33,12 +34,13 @@ export default function Home() {
   const [alunoFooter, setAlunoFooter] = useState('');
   const [baseFooter, setBaseFooter] = useState('');
 
-  // --- Função para carregar uma nova questão (com Axios) ---
+  // --- Função para carregar uma nova questão ---
   const carregarQuestao = useCallback(async () => {
     setMessage('');
     setIsLoading(false);
 
     try {
+      // TO DO: ajustar para carregar questão por slug + id
       const res = await axios.get<QuestionResponse>(`${API_URL}/question`);
       const { enunciado, id } = res.data;
 
@@ -60,7 +62,7 @@ export default function Home() {
     }
   }, []);
 
-  // --- Função para validar a consulta (com Axios) ---
+  // --- Função para validar a consulta ---
   const validarConsulta = useCallback(async () => {
     setIsLoading(true);
     setMessage('');
@@ -69,6 +71,7 @@ export default function Home() {
     setAlunoFooter('');
     setBaseFooter('');
 
+    // TO DO: enviar também o slug da questão
     const payload = { student_sql: sqlQuery, question_id: questionId };
 
     try {
@@ -93,7 +96,7 @@ export default function Home() {
         );
       }
     } catch (err: unknown) {
-      let errorMessage = 'Erro desconhecido ao validar.';
+      let errorMessage = 'Erro desconhecido ao realizar validação.';
       if (axios.isAxiosError(err)) {
         errorMessage = err.response?.data?.error || err.message;
       } else if (err instanceof Error) {
@@ -106,6 +109,7 @@ export default function Home() {
   }, [sqlQuery, questionId]);
 
   // --- Efeito para carregar a 1ª questão na montagem ---
+  // TODO: A primeira questão carregada deve ser a de id 1 + slug
   useEffect(() => {
     carregarQuestao();
   }, [carregarQuestao]);

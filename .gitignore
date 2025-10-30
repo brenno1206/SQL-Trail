@@ -15,6 +15,7 @@ __pycache__/
 # Dependências
 frontend/node_modules/
 frontend/next-env.d.ts
+.prettierrc
 
 # Logs
 frontend/npm-debug.log*
