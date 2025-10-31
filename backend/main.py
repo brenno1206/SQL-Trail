@@ -5,27 +5,24 @@ import os
 import requests
 import time
 import json
-import random
 from supabase import create_client
 
 load_dotenv()
-# Gerenciamento do BD
-# TODO: Mudar variaveis de acordo com o projeto atual
-SUPABASE_URL = os.getenv('SUPABASE_URL_RECURSOS_HUMANOS')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY_RECURSOS_HUMANOS')
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Gerenciamento do groq
 GROQ_API_KEY = os.getenv('API_KEY')
 GROQ_MODEL = os.getenv('GROQ_MODEL')
 GROQ_URL = os.getenv('GROQ_URL')
 
-# Transforma a lista de questões em dicionário indexado por ID
-# TODO: Mudar o dicionário pra ser indexado por tupla (slug, id)
+# Transforma a lista de questões em dicionário indexado por ID,
 with open('questoes.json', encoding='utf-8') as f:
     lista = json.load(f)
-QUESTOES = {q['id']: q for q in lista}
+QUESTOES = {
+    # KEY: (slug, id) VALUE: question dict
+    (db['slug'], q['id']): q
+        for db in lista
+        for q in db['questions']
+}
 
 
 app = Flask(__name__)
@@ -37,11 +34,13 @@ def is_select(query: str) -> bool:
 
 # Retorna o resultado da query via Supabase RPC
 # TODO: Retornar json de erro detalhado ao invés de None
-def supabase_query(sql: str, max_rows: int = 20, retries: int = 3, backoff: float = 1.0):
+def supabase_query(supabase_client, sql: str, max_rows: int = 20, retries: int = 3, backoff: float = 1.0):
+    
+    
     sql = sql.strip().rstrip(';')
     for attempt in range(1, retries + 1):
         try:
-            response = supabase.rpc('rpc_sql', {'p_query': sql}).execute()
+            response = supabase_client.rpc('rpc_sql', {'p_query': sql}).execute()
         except Exception as e:
             # Tenta realizar a consulta de novo em caso de erro de conexão (padrão: 3 tentativas)
             if getattr(e, 'winerror', None) == 10054 and attempt < retries:
@@ -148,29 +147,42 @@ def groq_validate(enunciado: str, base_sql: str, student_sql: str) -> bool:
 
     return False
 
-# Endpoint para obter uma questão aleatória
-# TODO: Escolher questão por slug + id
-@app.route('/question')
-def question():
-    #global CURRENT_QUESTION_ID
-    q = random.choice(list(QUESTOES.values()))
-    # CURRENT_QUESTION_ID = q['id']
-    return jsonify({'id': q['id'], 'enunciado': q['enunciado']})
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
+
+#
+@app.route('/questions')
+def questions():
+    slug = request.args.get('slug') 
+
+    if slug is None:
+        return jsonify({'error': 'Parâmetro slug é obrigatório.'}), 400
+
+    question_list = [
+        {'id': q['id'], 'slug': q['slug'] ,'enunciado': q['enunciado']}
+        for q in QUESTOES.values() if q['slug'] == slug 
+    ]
+    return jsonify(question_list)
 
 # Endpoint para validação da consulta do aluno
 # Retorna JSON com resultado da validação
-# TODO: Melhorar mensagens de erro
-# TODO: Ajustar para receber slug + id
 @app.route('/validate', methods=['POST'])
 def validate():
     data = request.get_json() or {}
-
+    slug = data.get('slug')
     question_id = data.get('question_id')
 
-    if question_id is None or question_id not in QUESTOES:
+    if slug is None or question_id is None or (slug, question_id) not in QUESTOES:
         return jsonify({'valid': False, 'error': 'Questão inválida ou não carregada.'}), 400
 
-    q = QUESTOES[question_id]
+    # Carrega credenciais do Supabase específicas para o slug
+    SUPABASE_URL = os.getenv('SUPABASE_URL_' + slug.upper().replace('-', '_'))
+    SUPABASE_KEY = os.getenv('SUPABASE_KEY_' + slug.upper().replace('-', '_'))
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return jsonify({'error': f'Credenciais para o slug {slug} não encontradas.'}), 404
+    supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+    
+    q = QUESTOES[(slug, question_id)]
     base_sql = q['resposta_base']
     enunciado = q['enunciado']
     student_sql = data.get('student_sql', '').strip()
@@ -184,12 +196,12 @@ def validate():
         return jsonify({'valid': False, 'error': 'Sua consulta não inicia com SELECT.', 'enunciado': enunciado}), 200
 
     # 2) Validação de sintaxe/semântica via Supabase
-    stu_res = supabase_query(student_sql)
+    stu_res = supabase_query(supabase_client, student_sql)
     if stu_res is None:
-        return jsonify({'valid': False, 'error': 'Erro na execução da consulta (sintaxe ou semântica).', 'enunciado': enunciado}), 200
+        return jsonify({'valid': False, 'error': 'Erro na execução da sua consulta.', 'enunciado': enunciado}), 200
 
     # 3) Executa consulta base para comparação
-    base_res = supabase_query(base_sql)
+    base_res = supabase_query(supabase_client, base_sql)
     if base_res is None:
         return jsonify({'valid': False, 'error': 'Erro na execução da consulta base.', 'enunciado': enunciado}), 500
 
@@ -211,7 +223,7 @@ def validate():
     if equivalent:
         payload['message'] = 'Parabéns! Sua consulta está correta e atende aos requisitos.'
     else:
-        payload['error'] = 'Seu resultado não está correto, as cosultas não são equivalentes.'
+        payload['error'] = 'Seu resultado não está correto, as consultas não são equivalentes.'
 
     if stu_res:
         payload['result_table'] = stu_res

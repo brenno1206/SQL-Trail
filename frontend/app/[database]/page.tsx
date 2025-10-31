@@ -121,6 +121,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-100">
+      {/** TODO: Botao pra voltar pra pag inicial */}
       <Header carregarQuestao={carregarQuestao} />
       <main className="flex flex-1 flex-col gap-8 px-10 py-10 md:flex-row">
         <section className="flex flex-col space-y-4 md:w-1/2">
