@@ -11,6 +11,13 @@ import { ResultCard } from '@/components/ResultCard';
 import { MessageStatus } from '@/components/MessageStatus';
 import { useParams } from 'next/navigation';
 
+const slugs = [
+  'universidade',
+  'recursos-humanos',
+  'e-commerce',
+  'companhia-aerea',
+];
+
 export default function Home() {
   const params = useParams();
 
@@ -97,9 +104,7 @@ export default function Home() {
           setAlunoFooter('');
           setBaseFooter('');
           setMessage('');
-          setMessage(
-            `Trilha "${slug}" carregada com ${questions.length} questões.`,
-          );
+          setMessage('');
         } else {
           setMessage('Nenhuma questão encontrada para esta trilha.');
           setAvailableQuestions([]);
@@ -178,6 +183,24 @@ export default function Home() {
   const onEditorChange = useCallback((value: string) => {
     setSqlQuery(value);
   }, []);
+
+  if (!slug || !slugs.includes(slug)) {
+    return (
+      <div className="flex min-h-screen flex-col bg-gray-100">
+        <Header slug={slug} />
+        <main className="flex flex-1 items-center justify-center">
+          <div className="m-10 rounded-lg bg-white p-20 shadow">
+            <h1 className="mb-4 text-2xl font-bold">Trilha não encontrada</h1>
+            <p>
+              A trilha solicitada não existe. Por favor, verifique o URL ou
+              selecione uma trilha válida.
+            </p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-100">

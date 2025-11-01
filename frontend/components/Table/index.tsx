@@ -16,7 +16,7 @@ export function Table({ data }: { data: TableData | null }) {
           {data.columns.map((col) => (
             <th
               key={col}
-              className="border border-gray-300 p-2 text-left font-medium text-gray-700"
+              className="border border-gray-400 p-2 text-left font-bold text-gray-700 bg-gray-300"
             >
               {col}
             </th>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { QuestionListItem } from '@/types/Response';
 import Link from 'next/link';
+import { IoIosArrowDropleftCircle } from '@/assets/icons';
 
 interface HeaderProps {
   slug?: string;
@@ -22,7 +23,7 @@ export default function Header({
   const showActionButtons = availableQuestions && availableQuestions.length > 0;
 
   const baseButtonStyles =
-    'rounded-lg bg-white px-5 py-2.5 font-semibold text-blue-900 shadow-md transition-all duration-200 ease-in-out hover:bg-blue-50 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50';
+    'rounded-lg bg-white px-5 py-2.5 font-semibold cursor-pointer text-blue-900 shadow-md transition-all duration-200 ease-in-out hover:bg-blue-50 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50';
 
   const modalCloseButtonStyles =
     'absolute -top-3 -right-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-3xl font-light text-gray-600 shadow-lg transition-all duration-200 ease-in-out hover:rotate-90 hover:bg-red-50 hover:text-red-600';
@@ -30,24 +31,27 @@ export default function Header({
   return (
     <header
       className={
-        'flex h-20 shrink-0 items-center bg-blue-900 px-10 py-4 text-white shadow-md ' +
+        'flex h-20 shrink-0 items-center bg-blue-900 px-10 py-4 text-white shadow-md' +
         (showActionButtons ? 'justify-between' : 'justify-center')
       }
     >
       <div className="flex flex-1 items-center justify-start gap-4">
+        {slug && (
+          <Link
+            href={'/'}
+            className="p-2 text-4xl hover:transition-all hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50"
+          >
+            <IoIosArrowDropleftCircle className="hover:text-blue-50 " />
+          </Link>
+        )}
         {showActionButtons && (
-          <>
-            <Link href={'/'} className={baseButtonStyles}>
-              Voltar
-            </Link>
-            <button
-              id="btnNext"
-              onClick={() => setIsQuestionModalOpen(true)}
-              className={baseButtonStyles}
-            >
-              Selecionar Questão
-            </button>
-          </>
+          <button
+            id="btnNext"
+            onClick={() => setIsQuestionModalOpen(true)}
+            className={baseButtonStyles}
+          >
+            Selecionar Questão
+          </button>
         )}
       </div>
 
@@ -88,7 +92,7 @@ export default function Header({
               Mapa Conceitual
             </h2>
             <Image
-              src="/modelo.png"
+              src={`/${slug}.png`}
               alt="Mapa Conceitual"
               width={702}
               height={662}
@@ -116,15 +120,15 @@ export default function Header({
             <h2 className="mb-4 text-2xl font-bold text-gray-900">
               Questões - {slug}
             </h2>
-            <ul className="flex max-h-96 flex-col space-y-2 overflow-y-auto">
+            <ul className="flex max-h-96 flex-col space-y-2 overflow-y-auto divide-y divide-gray-200">
               {availableQuestions.map((q, index) => (
-                <li key={q.id}>
+                <li key={q.id} className="flex flex-col center">
                   <button
                     onClick={() => {
                       onQuestionSelect(q.id);
                       setIsQuestionModalOpen(false);
                     }}
-                    className="w-full rounded-lg p-4 text-left text-gray-800 transition-all duration-150 ease-in-out hover:bg-blue-50 hover:pl-6"
+                    className="w-full rounded-lg p-4 text-left text-gray-800 transition-all duration-200 ease-in-out hover:bg-blue-50 hover:pl-6"
                   >
                     <strong>Questão {index + 1}:</strong>{' '}
                     {q.enunciado.substring(0, 100)}...

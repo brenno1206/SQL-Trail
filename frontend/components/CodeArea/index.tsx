@@ -14,7 +14,6 @@ export default function CodeArea({
 }: CodeAreaProps) {
   return (
     <article className="overflow-hidden rounded-lg bg-white shadow">
-      {/*TODO: Adicionar possibilidade de mudar para o tema escuro */}
       <CodeMirror
         value={sqlQuery}
         height="45vh"
@@ -26,7 +25,7 @@ export default function CodeArea({
       <button
         id="btnValidate"
         onClick={validarConsulta}
-        className="w-full bg-blue-900 px-4 py-3 font-bold text-white transition-colors hover:bg-blue-700 active:bg-blue-800"
+        className="w-full bg-blue-900 px-4 py-3 font-bold text-white transition-colors hover:bg-blue-800 active:bg-blue-700"
       >
         Validar Consulta
       </button>
