@@ -44,6 +44,11 @@
         "resposta_base": "SELECT employee_id, job_id FROM job_history;"
       },
       {
+        "id": 9,
+        "enunciado": "Liste o nome do departamento e a cidade onde ele está localizado.",
+        "resposta_base": "SELECT d.department_name, l.city\nFROM departments d\nJOIN locations l ON d.location_id = l.location_id\nORDER BY d.department_name;"
+      },
+      {
         "id": 10,
         "enunciado": "Liste os nomes dos países que pertencem à região com ID 2.",
         "resposta_base": "SELECT country_name FROM countries WHERE region_id = 2;"
@@ -87,6 +92,11 @@
         "id": 18,
         "enunciado": "Para cada cargo, exiba o título do cargo, o número de funcionários que o ocupam e a diferença entre o salário máximo e mínimo desse cargo.",
         "resposta_base": "SELECT j.job_title,\n       COUNT(e.employee_id) AS num_empregados,\n       (j.max_salary - j.min_salary) AS faixa_salarial\nFROM jobs j\nLEFT JOIN employees e ON e.job_id = j.job_id\nGROUP BY j.job_title, j.max_salary, j.min_salary\nORDER BY faixa_salarial DESC;"
+      },
+      {
+        "id": 19,
+        "enunciado": "Liste o nome completo dos funcionários que já mudaram de cargo (possuem registro em job_history).",
+        "resposta_base": "SELECT DISTINCT CONCAT(e.first_name, ' ', e.last_name) AS nome_completo\nFROM employees e\nJOIN job_history j ON e.employee_id = j.employee_id\nORDER BY nome_completo;"
       },
       {
         "id": 20,

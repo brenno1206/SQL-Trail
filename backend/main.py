@@ -23,6 +23,7 @@ QUESTOES = {
         for db in lista
         for q in db['questions']
 }
+print(f'Carregadas {len(QUESTOES)} questões de {len(lista)} bancos de dados.')
 
 
 app = Flask(__name__)
@@ -33,27 +34,29 @@ def is_select(query: str) -> bool:
     return query.strip().lower().startswith('select')
 
 # Retorna o resultado da query via Supabase RPC
-# TODO: Retornar json de erro detalhado ao invés de None
 def supabase_query(supabase_client, sql: str, max_rows: int = 20, retries: int = 3, backoff: float = 1.0):
     
     
     sql = sql.strip().rstrip(';')
+    last_exception = None
     for attempt in range(1, retries + 1):
         try:
             response = supabase_client.rpc('rpc_sql', {'p_query': sql}).execute()
         except Exception as e:
-            # Tenta realizar a consulta de novo em caso de erro de conexão (padrão: 3 tentativas)
+            last_exception = e
             if getattr(e, 'winerror', None) == 10054 and attempt < retries:
                 print(f'Conexão resetada (tentativa {attempt}/{retries}), retry em {backoff}s…')
                 time.sleep(backoff)
                 backoff *= 2
                 continue
             print('RPC exception:', e)
-            return None
+
+            return {'data': None, 'error': f'Exceção na chamada RPC: {e}'}
 
         if getattr(response, 'error', None):
             print('RPC error:', response.error)
-            return None
+            error_message = getattr(response.error, 'message', str(response.error))
+            return {'data': None, 'error': f'Erro no Banco de Dados: {error_message}'}
 
         data = response.data
 
@@ -62,11 +65,11 @@ def supabase_query(supabase_client, sql: str, max_rows: int = 20, retries: int =
                 data = json.loads(data)
             except Exception as e:
                 print('JSON decode error:', e, data)
-                return None
+                return {'data': None, 'error': f'Erro ao decodificar JSON retornado pelo banco: {e}'}
 
         if not isinstance(data, list):
             print('RPC retornou formato inesperado:', type(data), data)
-            return None
+            return {'data': None, 'error': data['error']}
 
         total = len(data)
         display = data if max_rows == 0 else data[:max_rows]
@@ -75,13 +78,18 @@ def supabase_query(supabase_client, sql: str, max_rows: int = 20, retries: int =
 
         rows = [tuple(item.values()) for item in display]
 
-        return {
+        return { 
+            'data': {
             'columns': columns,
             'rows': rows,
             'total_rows': total
+        },
+        'error': None
         }
-
-    return None
+    if last_exception:
+        return {'data': None, 'error': f'Falha na conexão após {retries} tentativas: {last_exception}'}
+    
+    return {'data': None, 'error': f'Falha na conexão após {retries} tentativas.'}
 
 #Validação semântica via Groq
 def groq_validate(enunciado: str, base_sql: str, student_sql: str) -> bool:
@@ -149,7 +157,7 @@ def groq_validate(enunciado: str, base_sql: str, student_sql: str) -> bool:
 
 app.secret_key = os.getenv('FLASK_SECRET_KEY')
 
-#
+# Endpoint para listar questões disponíveis com base no slug
 @app.route('/questions')
 def questions():
     slug = request.args.get('slug') 
@@ -158,8 +166,9 @@ def questions():
         return jsonify({'error': 'Parâmetro slug é obrigatório.'}), 400
 
     question_list = [
-        {'id': q['id'], 'slug': q['slug'] ,'enunciado': q['enunciado']}
-        for q in QUESTOES.values() if q['slug'] == slug 
+        {'id': q['id'], 'slug': slug, 'enunciado': q['enunciado']}
+        for key, q in QUESTOES.items()
+        if key[0] == slug
     ]
     return jsonify(question_list)
 
@@ -197,17 +206,18 @@ def validate():
 
     # 2) Validação de sintaxe/semântica via Supabase
     stu_res = supabase_query(supabase_client, student_sql)
-    if stu_res is None:
-        return jsonify({'valid': False, 'error': 'Erro na execução da sua consulta.', 'enunciado': enunciado}), 200
+    if stu_res['error']:
+        return jsonify({'valid': False, 'error': stu_res['error'], 'enunciado': enunciado}), 200
 
     # 3) Executa consulta base para comparação
     base_res = supabase_query(supabase_client, base_sql)
-    if base_res is None:
-        return jsonify({'valid': False, 'error': 'Erro na execução da consulta base.', 'enunciado': enunciado}), 500
+    if base_res['error']:
+        error_msg = f"Erro ao executar consulta base: {base_res['error']}"
+        return jsonify({'valid': False, 'error': error_msg, 'enunciado': enunciado}), 500
 
     # 3a) Validação estrutural: número de colunas
-    if stu_res['total_rows'] != base_res['total_rows']:
-        msg = f'Número de linhas diferente (esperado {base_res["total_rows"]} vs obtido {stu_res["total_rows"]}).'
+    if stu_res['data']['total_rows'] != base_res['data']['total_rows']:
+        msg = f"Número de linhas diferente (esperado {base_res['total_rows']} vs obtido {stu_res['total_rows']})."
         payload = {
             'valid': False,
             'error': msg,
@@ -225,9 +235,9 @@ def validate():
     else:
         payload['error'] = 'Seu resultado não está correto, as consultas não são equivalentes.'
 
-    if stu_res:
+    if stu_res['data']:
         payload['result_table'] = stu_res
-    if base_res:
+    if base_res['data']:
         payload['expected_table'] = base_res
 
     return jsonify(payload)
