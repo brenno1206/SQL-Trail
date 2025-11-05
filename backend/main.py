@@ -217,7 +217,7 @@ def validate():
 
     # 3a) Validação estrutural: número de colunas
     if stu_res['data']['total_rows'] != base_res['data']['total_rows']:
-        msg = f"Número de linhas diferente (esperado {base_res['total_rows']} vs obtido {stu_res['total_rows']})."
+        msg = f"Número de linhas diferente (esperado {base_res['data']['total_rows']} vs obtido {stu_res['data']['total_rows']})."
         payload = {
             'valid': False,
             'error': msg,
