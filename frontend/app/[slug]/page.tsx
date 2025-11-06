@@ -10,13 +10,9 @@ import CodeArea from '@/components/CodeArea';
 import { ResultCard } from '@/components/ResultCard';
 import { MessageStatus } from '@/components/MessageStatus';
 import { useParams } from 'next/navigation';
+import { databases } from '@/types/databases';
 
-const slugs = [
-  'universidade',
-  'recursos-humanos',
-  'e-commerce',
-  'companhia-aerea',
-];
+const slugs = databases.map((db) => db.slug);
 
 export default function Home() {
   const params = useParams();

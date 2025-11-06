@@ -1,26 +1,17 @@
 import Link from 'next/link';
-import {
-  IoIosAirplane,
-  IoMdPeople,
-  IoMdSchool,
-  IoIosCart,
-} from '@/assets/icons';
+import { IoMdPeople } from '@/assets/icons';
+import { databases } from '@/types/databases';
 
 interface DatabaseCardProps {
   slug: string;
   title: string;
 }
 
-const iconMap = {
-  'companhia-aerea': IoIosAirplane,
-  'recursos-humanos': IoMdPeople,
-  universidade: IoMdSchool,
-  'e-commerce': IoIosCart,
-};
 const DefaultIcon = IoMdPeople;
 
 export default function DatabaseCard({ slug, title }: DatabaseCardProps) {
-  const IconComponent = iconMap[slug as keyof typeof iconMap] || DefaultIcon;
+  const IconComponent =
+    databases.find((db) => db.slug === slug)?.icon || DefaultIcon;
   return (
     <Link
       href={`/${slug}`}

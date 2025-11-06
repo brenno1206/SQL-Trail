@@ -75,11 +75,11 @@ export default function Header({
       {isErdModalOpen && (
         <div
           id="erdModal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 px-20 overflow-y-auto"
           onClick={() => setIsErdModalOpen(false)}
         >
           <div
-            className="relative w-full max-w-3xl rounded-lg bg-white p-6 shadow-2xl"
+            className="relative h-full max-h-14/15 rounded-lg bg-white p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <span
@@ -91,12 +91,10 @@ export default function Header({
             <h2 className="mb-4 text-2xl font-bold text-gray-900">
               Mapa Conceitual
             </h2>
-            <Image
+            <img
               src={`/${slug}.png`}
               alt="Mapa Conceitual"
-              width={702}
-              height={662}
-              className="mt-4 h-auto w-full rounded-md border border-gray-200"
+              className="mt-4 h-auto max-h-5/6 rounded-md border border-gray-200"
             />
           </div>
         </div>

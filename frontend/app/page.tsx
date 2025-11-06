@@ -1,13 +1,7 @@
 import DatabaseCard from '@/components/DatabaseCard';
 import { Footer } from '@/components/Footer';
 import Header from '@/components/Header';
-
-const databases = [
-  { slug: 'recursos-humanos', title: 'Recursos Humanos' },
-  { slug: 'universidade', title: 'Universidade' },
-  { slug: 'e-commerce', title: 'E-Commerce' },
-  { slug: 'companhia-aerea', title: 'Companhia Aérea' },
-];
+import { databases } from '@/types/databases';
 
 export default function DatabasePage() {
   return (
