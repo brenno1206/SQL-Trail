@@ -239,32 +239,32 @@
       },
       {
         "id": 7,
-        "enunciado": "Encontre o nome de todos os programas (programs) que são do tipo 'Bachelors'.",
+        "enunciado": "Encontre o nome de todos os programas que são do tipo 'Bachelors'.",
         "resposta_base": "SELECT program_name FROM programs WHERE degree_type = 'Bachelors';"
       },
       {
         "id": 8,
-        "enunciado": "Liste todos os dados das matrículas (enrollments) onde o aluno foi reprovado ('Failed').",
+        "enunciado": "Liste todos os dados das matrículas onde o aluno foi reprovado.",
         "resposta_base": "SELECT * FROM enrollments WHERE status = 'Failed';"
       },
       {
         "id": 9,
-        "enunciado": "Encontre o class_id e student_id das matrículas que tiveram 5 ou mais faltas (absences).",
+        "enunciado": "Encontre o class_id e student_id das matrículas que tiveram 5 ou mais faltas.",
         "resposta_base": "SELECT class_id, student_id FROM enrollments WHERE absences >= 5;"
       },
       {
         "id": 10,
-        "enunciado": "Liste os nomes de todos os cursos (courses) ordenados alfabeticamente.",
+        "enunciado": "Liste os nomes de todos os cursos ordenados alfabeticamente.",
         "resposta_base": "SELECT course_name FROM courses ORDER BY course_name;"
       },
       {
         "id": 11,
-        "enunciado": "Liste o nome completo (first_name, last_name) de todos os membros que são estudantes.",
+        "enunciado": "Liste o nome completo de todos os membros que são estudantes.",
         "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN students s ON m.member_id = s.student_id;"
       },
       {
         "id": 12,
-        "enunciado": "Liste o nome completo e o título (title) de todos os membros que são professores.",
+        "enunciado": "Liste o nome completo e o título de todos os membros que são professores.",
         "resposta_base": "SELECT m.first_name, m.last_name, p.title FROM members m JOIN professors p ON m.member_id = p.professor_id;"
       },
       {
@@ -274,32 +274,32 @@
       },
       {
         "id": 14,
-        "enunciado": "Liste o nome completo de todos os professores do departamento 'Computer Science' (CS).",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN departments d ON p.department_id = d.department_id WHERE d.abbreviation = 'CS';"
+        "enunciado": "Liste o nome completo de todos os professores do departamento de TI.",
+        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN departments d ON p.department_id = d.department_id WHERE d.abbreviation = 'IT';"
       },
       {
         "id": 15,
-        "enunciado": "Conte quantos professores (professors) existem em cada departamento (departments). Liste o nome do departamento e a contagem.",
+        "enunciado": "Conte quantos professores  existem em cada departamento. Liste o nome do departamento e a contagem.",
         "resposta_base": "SELECT d.name, COUNT(p.professor_id) AS total_professors FROM departments d LEFT JOIN professors p ON d.department_id = p.department_id GROUP BY d.name;"
       },
       {
         "id": 16,
-        "enunciado": "Liste o nome de cada programa (program_name) e o nome completo do seu coordenador (professor).",
+        "enunciado": "Liste o nome de cada programa e o nome completo do seu coordenador.",
         "resposta_base": "SELECT prog.program_name, m.first_name, m.last_name AS coordinator_name FROM programs prog JOIN professors p ON prog.coordinator_id = p.professor_id JOIN members m ON p.professor_id = m.member_id;"
       },
       {
         "id": 17,
-        "enunciado": "Encontre o nome do coordenador do programa 'MSc in Data Science'.",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN programs prog ON p.professor_id = prog.coordinator_id WHERE prog.program_name = 'MSc in Data Science';"
+        "enunciado": "Encontre o nome do coordenador do programa 'Data Science'.",
+        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN programs prog ON p.professor_id = prog.coordinator_id WHERE prog.program_name = 'Data Science';"
       },
       {
         "id": 18,
-        "enunciado": "Liste os nomes dos cursos (course_name) lecionados pelo professor 'Dr. Iris Chen' (professor_id 33).",
+        "enunciado": "Liste os nomes dos cursos ecionados pelo professor 'Iris Chen'.",
         "resposta_base": "SELECT DISTINCT c.course_name FROM courses c JOIN classes cl ON c.course_id = cl.course_id WHERE cl.professor_id = 33;"
       },
       {
         "id": 19,
-        "enunciado": "Calcule a nota média (grade) de todos os alunos na turma (class_id) 1 (Intro to Programming, 2024/2).",
+        "enunciado": "Calcule a nota média de todos os alunos na turma de ID 1 (Intro to Programming, 2024/2).",
         "resposta_base": "SELECT AVG(grade) FROM enrollments WHERE class_id = 1 AND grade IS NOT NULL;"
       },
       {
