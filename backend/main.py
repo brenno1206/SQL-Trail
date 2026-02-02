@@ -69,7 +69,8 @@ def supabase_query(supabase_client, sql: str, max_rows: int = 20, retries: int =
 
         if not isinstance(data, list):
             print('RPC retornou formato inesperado:', type(data), data)
-            return {'data': None, 'error': data['error']}
+            msg = data.get('error') if isinstance(data, dict) else "Formato inesperado"
+            return {'data': None, 'error': msg}
 
         total = len(data)
         display = data if max_rows == 0 else data[:max_rows]
@@ -91,33 +92,12 @@ def supabase_query(supabase_client, sql: str, max_rows: int = 20, retries: int =
     
     return {'data': None, 'error': f'Falha na conexão após {retries} tentativas.'}
 
-# Comparação da consulta SQL
-def check_sql_structure(base_sql, student_sql):
+# Comparação dos resultados
+def compare_results(base_sql, student_sql, base_res, student_res):
+
     base_upper = " " + base_sql.upper().replace('\n', ' ') + " "
     stu_upper = " " + student_sql.upper().replace('\n', ' ') + " "
 
-    keywords = [
-        r'\sORDER\s+BY\s', 
-        r'\sDISTINCT\s', 
-        r'\sGROUP\s+BY\s', 
-        r'\sLIMIT\s', 
-        r'\sHAVING\s'
-    ]
-    warnings = []
-
-    for pattern in keywords:
-        # Se a base tem a keyword e o aluno não tem
-        if re.search(pattern, base_upper) and not re.search(pattern, stu_upper):
-            kw_readable = pattern.replace(r'\s', ' ').replace(r'+', '').strip()
-            warnings.append(f"Parece que você esqueceu de usar o '{kw_readable}'.")
-
-    if warnings:
-        return False, " ".join(warnings)
-    
-    return True, None
-
-# Comparação dos resultados
-def compare_results(base_res, student_res):
     base_data = base_res.get('data')
     stu_data = student_res.get('data')
 
@@ -142,27 +122,18 @@ def compare_results(base_res, student_res):
 
     # NÍVEL 1: Conteúdo Correto, Ordem Correta
     if df_base_norm.values.tolist() == df_stu_norm.values.tolist():
-        return True, "Resultado perfeito! Dados e ordem corretos."
+        return True, "Parabéns, sua consulta está correta."
 
     # NÍVEL 2: Conteúdo Correto, Ordem Errada
     def sort_matrix(df):
         return sorted(df.values.tolist())
 
     if sort_matrix(df_base_norm) == sort_matrix(df_stu_norm):
-        return False, "Os dados estão corretos, mas a ordem das linhas está errada."
+        if re.search(r'\bORDER\s+BY\b', base_upper) and not re.search(r'\bORDER\s+BY\b', stu_upper):
+            return False, "Os dados estão corretos, mas parece que você esqueceu de usar 'ORDER BY'."
+        return True, "Parabéns, sua consulta está correta."
 
-    # NÍVEL 3: Ignora ordem das colunas
-    def flatten_rows(df):
-        flattened = []
-        for _, row in df.iterrows():
-            row_values = sorted([str(x) for x in row.values])
-            flattened.append("".join(row_values))
-        return sorted(flattened)
-
-    if flatten_rows(df_base_norm) == flatten_rows(df_stu_norm):
-        return False, "Os dados parecem corretos, mas verifique a ordem das colunas ou a ordenação das linhas."
-
-    # NÍVEL 4: Comparação Alfanumérica 
+    # NÍVEL 3: Comparação Alfanumérica 
     def get_alphanumeric_fingerprint(df):
         fingerprints = []
         for _, row in df.iterrows():
@@ -262,89 +233,51 @@ def questions():
 @app.route('/validate', methods=['POST'])
 def validate():
     data = request.get_json() or {}
-    slug = data.get('slug')
-    question_id = data.get('question_id')
+    slug, q_id = data.get('slug'), data.get('question_id')
 
-    if slug is None or question_id is None or (slug, question_id) not in QUESTOES:
+    # 1. Validações iniciais (Input e Existência)
+    if not all([slug, q_id]) or (slug, q_id) not in QUESTOES:
         return jsonify({'valid': False, 'error': 'Questão inválida ou não carregada.'}), 400
 
-    # Carrega credenciais do Supabase específicas para o slug
-    SUPABASE_URL = os.getenv('SUPABASE_URL_' + slug.upper().replace('-', '_'))
-    SUPABASE_KEY = os.getenv('SUPABASE_KEY_' + slug.upper().replace('-', '_'))
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        return jsonify({'error': f'Credenciais para o slug {slug} não encontradas.'}), 404
-    supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-    
-    q = QUESTOES[(slug, question_id)]
-    base_sql = q['resposta_base']
-    enunciado = q['enunciado']
+    q_data = QUESTOES[(slug, q_id)]
+    enunciado = q_data['enunciado']
     student_sql = data.get('student_sql', '').strip()
 
-    # 0) Verifica se consulta está vazia
+    # 2. Validações da Consulta do Aluno
     if not student_sql:
         return jsonify({'valid': False, 'error': 'Sua Consulta está em branco.', 'enunciado': enunciado}), 400
-
-    # 1) Valida SELECT
     if not is_select(student_sql):
         return jsonify({'valid': False, 'error': 'Sua consulta não inicia com SELECT.', 'enunciado': enunciado}), 200
 
-    # 2) Validação de sintaxe/semântica via Supabase
-    stu_res = supabase_query(supabase_client, student_sql)
-    if stu_res['error']:
+    # 3. Configuração do Supabase
+    suffix = slug.upper().replace('-', '_')
+    sb_url, sb_key = os.getenv(f'SUPABASE_URL_{suffix}'), os.getenv(f'SUPABASE_KEY_{suffix}')
+    
+    if not (sb_url and sb_key):
+        return jsonify({'error': f'Credenciais para o slug {slug} não encontradas.'}), 404
+
+    client = create_client(sb_url, sb_key)
+
+    # 4. Execução das Queries
+    stu_res = supabase_query(client, student_sql)
+    if stu_res.get('error'):
         return jsonify({'valid': False, 'error': stu_res['error'], 'enunciado': enunciado}), 200
-    base_res = supabase_query(supabase_client, base_sql)
-    if base_res['error']:
-        error_msg = f"Erro ao executar consulta base: {base_res['error']}"
-        return jsonify({'valid': False, 'error': error_msg, 'enunciado': enunciado}), 500
+        
+    base_res = supabase_query(client, q_data['resposta_base'])
+    if base_res.get('error'):
+        return jsonify({'valid': False, 'error': f"Erro na base: {base_res['error']}", 'enunciado': enunciado}), 500
+
+    # 5. Comparação e Resposta Final
+    is_valid, msg = compare_results(q_data['resposta_base'], student_sql, base_res, stu_res)
     
-    # 3) Verificação de estrutura SQL
-    struct_ok, struct_msg = check_sql_structure(base_sql, student_sql)
-    if not struct_ok:
-        return jsonify({
-            'valid': False, 
-            'error': struct_msg,
-            'enunciado': enunciado,
-            'result_table': stu_res,
-            'expected_table': base_res
-        }), 200
-
-    # 3.5) Validação de resultados exatos
-    match_data, match_msg = compare_results(base_res, stu_res)
-    if match_data:
-        payload = {
-            'valid': True,
-            'message': f'Parabéns! {match_msg}',
-            'enunciado': enunciado,
-            'result_table': stu_res,
-            'expected_table': base_res
-        }
-        return jsonify(payload), 200
-    else:
-        if "ordem das linhas" in match_msg:
-             return jsonify({
-                'valid': False,
-                'error': match_msg, 
-                'enunciado': enunciado,
-                'result_table': stu_res,
-                'expected_table': base_res
-            }), 200
-    
-    # 4) Último caso: Validação semântica com Groq
-    equivalent = groq_validate(enunciado, base_sql, student_sql)
-    payload = {'valid': equivalent, 'enunciado': enunciado}
-    if equivalent:
-        payload['message'] = 'GROQ: Parabéns! Sua consulta está correta e atende aos requisitos.'
-    else:
-        payload['error'] = 'GROQ: Seu resultado não está correto, as consultas não são equivalentes.'
-
-    if stu_res['data']:
-        payload['result_table'] = stu_res
-    if base_res['data']:
-        payload['expected_table'] = base_res
-
-    return jsonify(payload)
-
+    return jsonify({
+        'valid': is_valid,
+        'message': msg if is_valid else None,
+        'error': msg if not is_valid else None,
+        'enunciado': enunciado,
+        'result_table': stu_res,
+        'expected_table': base_res
+    }), 200
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 

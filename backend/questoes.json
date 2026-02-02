@@ -4,7 +4,7 @@
     "questions": [
       {
         "id": 1,
-        "enunciado": "Liste todos os nomes das regiões.",
+        "enunciado": "Liste todos os nomes das regiões cadastradas no sistema.",
         "resposta_base": "SELECT region_name FROM regions;"
       },
       {
@@ -14,193 +14,193 @@
       },
       {
         "id": 3,
-        "enunciado": "Liste o ID e a cidade de todas as localidades.",
-        "resposta_base": "SELECT location_id, city FROM locations;"
+        "enunciado": "Liste o ID, a cidade e o estado/província de todas as localidades.",
+        "resposta_base": "SELECT location_id, city, state_province FROM locations;"
       },
       {
         "id": 4,
-        "enunciado": "Liste o ID e o nome de todos os departamentos.",
-        "resposta_base": "SELECT department_id, department_name FROM departments;"
+        "enunciado": "Liste o ID e o nome de todos os departamentos, ordenados alfabeticamente pelo nome.",
+        "resposta_base": "SELECT department_id, department_name FROM departments ORDER BY department_name;"
       },
       {
         "id": 5,
-        "enunciado": "Liste o ID e o título de todos os cargos.",
-        "resposta_base": "SELECT job_id, job_title FROM jobs;"
+        "enunciado": "Liste o título do cargo, o salário mínimo e o salário máximo para cada função.",
+        "resposta_base": "SELECT job_title, min_salary, max_salary FROM jobs;"
       },
       {
         "id": 6,
-        "enunciado": "Liste o ID, o primeiro nome e o sobrenome de todos os funcionários.",
-        "resposta_base": "SELECT employee_id, first_name, last_name FROM employees;"
+        "enunciado": "Liste o nome, sobrenome e data de contratação de todos os funcionários.",
+        "resposta_base": "SELECT first_name, last_name, hire_date FROM employees;"
       },
       {
         "id": 7,
-        "enunciado": "Liste o ID do funcionário e sua data de contratação.",
-        "resposta_base": "SELECT employee_id, hire_date FROM employees;"
+        "enunciado": "Liste os funcionários contratados no ano de 1999 ou depois.",
+        "resposta_base": "SELECT first_name, last_name, hire_date FROM employees WHERE hire_date >= '1999-01-01';"
       },
       {
         "id": 8,
-        "enunciado": "Liste o ID do funcionário e o ID do cargo de todas as entradas no histórico de cargos.",
-        "resposta_base": "SELECT employee_id, job_id FROM job_history;"
+        "enunciado": "Liste o nome completo e o salário dos funcionários que ganham entre 5000 e 10000.",
+        "resposta_base": "SELECT first_name, last_name, salary FROM employees WHERE salary BETWEEN 5000 AND 10000;"
       },
       {
         "id": 9,
-        "enunciado": "Liste o nome do departamento e a cidade onde ele está localizado.",
-        "resposta_base": "SELECT d.department_name, l.city\nFROM departments d\nJOIN locations l ON d.location_id = l.location_id\nORDER BY d.department_name;"
+        "enunciado": "Liste o nome do departamento e a cidade onde ele está localizado (utilize JOIN).",
+        "resposta_base": "SELECT d.department_name, l.city FROM departments d JOIN locations l ON d.location_id = l.location_id;"
       },
       {
         "id": 10,
-        "enunciado": "Liste os nomes dos países que pertencem à região com ID 2.",
-        "resposta_base": "SELECT country_name FROM countries WHERE region_id = 2;"
+        "enunciado": "Liste o nome dos países que ficam na região 'Europe'.",
+        "resposta_base": "SELECT c.country_name FROM countries c JOIN regions r ON c.region_id = r.region_id WHERE r.region_name = 'Europe';"
       },
       {
         "id": 11,
-        "enunciado": "Liste cada país e a quantidade de localidades associadas a ele, em ordem decrescente pela quantidade.",
-        "resposta_base": "SELECT c.country_id, c.country_name, COUNT(l.location_id) AS num_localidades\nFROM countries c\nJOIN locations l ON l.country_id = c.country_id\nGROUP BY c.country_id, c.country_name\nORDER BY num_localidades DESC;"
+        "enunciado": "Crie uma coluna chamada 'Status' que mostre 'Executivo' se o salário for maior que 15000 e 'Geral' caso contrário (Use CASE).",
+        "resposta_base": "SELECT first_name, salary, CASE WHEN salary > 15000 THEN 'Executivo' ELSE 'Geral' END AS status FROM employees;"
       },
       {
         "id": 12,
-        "enunciado": "Para cada departamento, exiba o nome do departamento e o salário médio dos funcionários que trabalham nele.",
-        "resposta_base": "SELECT d.department_name, ROUND(AVG(e.salary)::numeric,2) AS salario_medio\nFROM departments d\nJOIN employees e ON e.department_id = d.department_id\nGROUP BY d.department_name\nORDER BY salario_medio DESC;"
+        "enunciado": "Liste o nome dos funcionários e o valor da comissão. Se a comissão for nula, exiba 0 (Use COALESCE).",
+        "resposta_base": "SELECT first_name, COALESCE(commission_pct, 0) AS comissao FROM employees;"
       },
       {
         "id": 13,
-        "enunciado": "Liste o nome completo de cada gerente e a quantidade de subordinados que ele possui, mostrando apenas gerentes com mais de 5 funcionários.",
-        "resposta_base": "SELECT CONCAT(m.first_name, ' ', m.last_name) AS nome_gerente, COUNT(e.employee_id) AS num_subordinados\nFROM employees e\nJOIN employees m ON e.manager_id = m.employee_id\nGROUP BY m.employee_id, m.first_name, m.last_name\nHAVING COUNT(e.employee_id) > 5\nORDER BY num_subordinados DESC;"
+        "enunciado": "Liste os funcionários cujo nome tem 5 letras e começa com 'S' (Use LIKE ou funções de string).",
+        "resposta_base": "SELECT first_name FROM employees WHERE first_name LIKE 'S____';"
       },
       {
         "id": 14,
-        "enunciado": "Encontre todos os cargos cujo salário mínimo seja maior que 10000, exibindo o ID do cargo, título e o salário mínimo.",
-        "resposta_base": "SELECT job_id, job_title, min_salary\nFROM jobs\nWHERE min_salary > 10000\nORDER BY min_salary DESC;"
+        "enunciado": "Exiba o nome completo formatado como 'Sobrenome, Nome' (ex: KING, Steven). Use UPPER para o sobrenome.",
+        "resposta_base": "SELECT UPPER(last_name) || ', ' || first_name AS nome_completo FROM employees;"
       },
       {
         "id": 15,
-        "enunciado": "Para cada região, liste o nome da região e a quantidade total de funcionários que trabalham em países dessa região.",
-        "resposta_base": "SELECT r.region_name, COUNT(e.employee_id) AS total_funcionarios\nLEFT FROM regions r\nLEFT JOIN countries c ON c.region_id = r.region_id\nLEFT JOIN locations l ON l.country_id = c.country_id\nLEFT JOIN departments d ON d.location_id = l.location_id\nLEFT JOIN employees e ON e.department_id = d.department_id\nGROUP BY r.region_name;"
+        "enunciado": "Liste os departamentos que possuem média salarial superior a 8000.",
+        "resposta_base": "SELECT d.department_name, AVG(e.salary) AS media FROM departments d JOIN employees e ON d.department_id = e.department_id GROUP BY d.department_name HAVING AVG(e.salary) > 8000;"
       },
       {
         "id": 16,
-        "enunciado": "Liste o nome completo dos funcionários e a quantidade de dias desde a sua data de contratação até hoje.",
-        "resposta_base": "SELECT CONCAT(first_name, ' ', last_name) AS nome_completo,\n       (CURRENT_DATE - hire_date) AS dias_na_empresa\nFROM employees\nORDER BY dias_na_empresa DESC;"
+        "enunciado": "Liste o nome do funcionário e quantos anos completos ele tem de empresa (Use EXTRACT ou cálculo de data).",
+        "resposta_base": "SELECT first_name, EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM hire_date) AS anos_empresa FROM employees;"
       },
       {
         "id": 17,
-        "enunciado": "Liste o nome completo dos funcionários que nunca mudaram de cargo (não possuem histórico em job_history).",
-        "resposta_base": "SELECT CONCAT(e.first_name, ' ', e.last_name) AS nome_completo\nFROM employees e\nWHERE NOT EXISTS (\n  SELECT 1 FROM job_history j\n  WHERE j.employee_id = e.employee_id\n)\nORDER BY nome_completo;"
+        "enunciado": "Liste os gerentes e a quantidade de funcionários que eles supervisionam.",
+        "resposta_base": "SELECT m.first_name AS gerente, COUNT(e.employee_id) AS total_subordinados FROM employees e JOIN employees m ON e.manager_id = m.employee_id GROUP BY m.first_name ORDER BY total_subordinados DESC;"
       },
       {
         "id": 18,
-        "enunciado": "Para cada cargo, exiba o título do cargo, o número de funcionários que o ocupam e a diferença entre o salário máximo e mínimo desse cargo.",
-        "resposta_base": "SELECT j.job_title,\n       COUNT(e.employee_id) AS num_empregados,\n       (j.max_salary - j.min_salary) AS faixa_salarial\nFROM jobs j\nLEFT JOIN employees e ON e.job_id = j.job_id\nGROUP BY j.job_title, j.max_salary, j.min_salary\nORDER BY faixa_salarial DESC;"
+        "enunciado": "Liste o nome dos cargos e o salário médio pago para esse cargo, arredondado para 2 casas decimais.",
+        "resposta_base": "SELECT j.job_title, ROUND(AVG(e.salary), 2) AS salario_medio FROM jobs j JOIN employees e ON j.job_id = e.job_id GROUP BY j.job_title;"
       },
       {
         "id": 19,
-        "enunciado": "Liste o nome completo dos funcionários que já mudaram de cargo (possuem registro em job_history).",
-        "resposta_base": "SELECT DISTINCT CONCAT(e.first_name, ' ', e.last_name) AS nome_completo\nFROM employees e\nJOIN job_history j ON e.employee_id = j.employee_id\nORDER BY nome_completo;"
+        "enunciado": "Liste os funcionários que foram contratados no mês de Junho (independente do ano).",
+        "resposta_base": "SELECT first_name, hire_date FROM employees WHERE EXTRACT(MONTH FROM hire_date) = 6;"
       },
       {
         "id": 20,
-        "enunciado": "Para cada departamento, liste os 3 funcionários com maior salário, mostrando nome completo, departamento e salário.",
-        "resposta_base": "SELECT nome_completo, department_name, salary FROM (\n  SELECT CONCAT(e.first_name, ' ', e.last_name) AS nome_completo,\n         d.department_name,\n         e.salary,\n         ROW_NUMBER() OVER (PARTITION BY e.department_id ORDER BY e.salary DESC) AS rn\n  FROM employees e\n  JOIN departments d ON e.department_id = d.department_id\n) sub\nWHERE rn <= 3\nORDER BY department_name, salary DESC;"
+        "enunciado": "Exiba o salário anual projetado (salário * 12) + bônus fixo de 1000 para todos os funcionários.",
+        "resposta_base": "SELECT first_name, (salary * 12) + 1000 AS remuneracao_anual FROM employees;"
       },
       {
         "id": 21,
-        "enunciado": "Liste os funcionários cujo departamento seja o mesmo que o do seu gerente.",
-        "resposta_base": "SELECT e.employee_id, e.first_name, e.last_name FROM employees e JOIN employees m ON e.manager_id = m.employee_id AND e.department_id = m.department_id;"
+        "enunciado": "Liste os funcionários que ganham mais do que a média salarial de toda a empresa (Subquery Simples).",
+        "resposta_base": "SELECT first_name, salary FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);"
       },
       {
         "id": 22,
-        "enunciado": "Para cada mês do ano, liste o número de funcionários contratados nesse mês (independente do ano).",
-        "resposta_base": "SELECT EXTRACT(MONTH FROM hire_date) AS mes, COUNT(*) AS num_contratacoes FROM employees GROUP BY mes ORDER BY mes;"
+        "enunciado": "Liste os departamentos que não possuem nenhum funcionário alocado (Use NOT EXISTS ou LEFT JOIN com NULL).",
+        "resposta_base": "SELECT d.department_name FROM departments d LEFT JOIN employees e ON d.department_id = e.department_id WHERE e.employee_id IS NULL;"
       },
       {
         "id": 23,
-        "enunciado": "Liste os departamentos que nunca tiveram funcionários nem histórico de cargos.",
-        "resposta_base": "SELECT d.department_id, d.department_name FROM departments d WHERE NOT EXISTS (SELECT 1 FROM employees e WHERE e.department_id = d.department_id) AND NOT EXISTS (SELECT 1 FROM job_history j WHERE j.department_id = d.department_id) ORDER BY d.department_id;"
+        "enunciado": "Liste os nomes dos funcionários que trabalham no departamento 'Sales' (sem usar o ID fixo, use Join).",
+        "resposta_base": "SELECT e.first_name, e.last_name FROM employees e JOIN departments d ON e.department_id = d.department_id WHERE d.department_name = 'Sales';"
       },
       {
         "id": 24,
-        "enunciado": "Para cada cargo, exiba o salário médio de comissão (commission_pct) considerando apenas valores não nulos.",
-        "resposta_base": "SELECT job_id, ROUND(AVG(commission_pct)::numeric,2) AS comissao_media FROM employees WHERE commission_pct IS NOT NULL GROUP BY job_id ORDER BY job_id;"
+        "enunciado": "Exiba o 'Country Name' e a quantidade de cidades cadastradas para aquele país.",
+        "resposta_base": "SELECT c.country_name, COUNT(l.city) AS qtd_cidades FROM countries c JOIN locations l ON c.country_id = l.country_id GROUP BY c.country_name;"
       },
       {
         "id": 25,
-        "enunciado": "Liste os funcionários cujo salário é maior que a média salarial do seu próprio departamento.",
-        "resposta_base": "SELECT e.employee_id, e.first_name, e.salary FROM employees e WHERE e.salary > (SELECT AVG(salary) FROM employees WHERE department_id = e.department_id) ORDER BY e.employee_id;"
+        "enunciado": "Liste os funcionários que têm o mesmo sobrenome, mas IDs diferentes (Self Join ou Subquery).",
+        "resposta_base": "SELECT e1.first_name, e1.last_name FROM employees e1 JOIN employees e2 ON e1.last_name = e2.last_name AND e1.employee_id <> e2.employee_id;"
       },
       {
         "id": 26,
-        "enunciado": "Exiba o funcionário que possui a data de contratação mais antiga.",
-        "resposta_base": "SELECT employee_id, first_name, last_name, hire_date FROM employees ORDER BY hire_date ASC LIMIT 1;"
+        "enunciado": "Liste os funcionários que foram contratados ANTES do seu próprio gerente (Self Join com comparação de datas).",
+        "resposta_base": "SELECT e.first_name AS funcionario, e.hire_date, m.first_name AS gerente, m.hire_date AS data_gerente FROM employees e JOIN employees m ON e.manager_id = m.employee_id WHERE e.hire_date < m.hire_date;"
       },
       {
         "id": 27,
-        "enunciado": "Liste os 3 funcionários com maior salário no banco.",
-        "resposta_base": "SELECT employee_id, first_name, last_name, salary FROM employees ORDER BY salary DESC LIMIT 3;"
+        "enunciado": "Classifique os salários em 3 grupos: 'A' (< 5000), 'B' (5000-10000), 'C' (> 10000) e conte quantos funcionários há em cada grupo.",
+        "resposta_base": "SELECT CASE WHEN salary < 5000 THEN 'A' WHEN salary BETWEEN 5000 AND 10000 THEN 'B' ELSE 'C' END AS faixa, COUNT(*) FROM employees GROUP BY 1 ORDER BY 1;"
       },
       {
         "id": 28,
-        "enunciado": "Para cada funcionário, exiba a quantidade de dias que durou seu primeiro período no histórico de cargos.",
-        "resposta_base": "SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) AS nome, (j.end_date - j.start_date) AS dias_primeiro_periodo FROM employees e JOIN job_history j ON j.employee_id = e.employee_id WHERE j.start_date = (SELECT MIN(start_date) FROM job_history WHERE employee_id = e.employee_id);"
+        "enunciado": "Liste o nome do departamento que possui o funcionário com o maior salário da empresa (Subquery).",
+        "resposta_base": "SELECT d.department_name FROM departments d JOIN employees e ON d.department_id = e.department_id WHERE e.salary = (SELECT MAX(salary) FROM employees);"
       },
       {
         "id": 29,
-        "enunciado": "Liste os países que não possuem nenhuma localidade cadastrada.",
-        "resposta_base": "SELECT country_id, country_name FROM countries c WHERE NOT EXISTS (SELECT 1 FROM locations l WHERE l.country_id = c.country_id) ORDER BY country_id;"
+        "enunciado": "Exiba o primeiro nome e o email (em letras minúsculas) concatenado com '@company.com'.",
+        "resposta_base": "SELECT first_name, LOWER(email) || '@company.com' AS email_corporativo FROM employees;"
       },
       {
         "id": 30,
-        "enunciado": "Para cada departamento, mostre o número de funcionários atuais e o número de entradas em job_history desse departamento.",
-        "resposta_base": "SELECT d.department_id, d.department_name, COUNT(DISTINCT e.employee_id) AS num_funcionarios, COUNT(j.employee_id) AS num_historicos FROM departments d LEFT JOIN employees e ON e.department_id = d.department_id LEFT JOIN job_history j ON j.department_id = d.department_id GROUP BY d.department_id, d.department_name ORDER BY d.department_id;"
+        "enunciado": "Liste os cargos (jobs) que possuem uma diferença entre salário máximo e mínimo superior a 5000.",
+        "resposta_base": "SELECT job_title, (max_salary - min_salary) AS diferenca FROM jobs WHERE (max_salary - min_salary) > 5000;"
       },
       {
         "id": 31,
-        "enunciado": "Liste cada cidade e a quantidade de departamentos localizados nela.",
-        "resposta_base": "SELECT l.city, COUNT(d.department_id) AS num_departamentos\nFROM departments d\nJOIN locations l ON d.location_id = l.location_id\nGROUP BY l.city\nORDER BY num_departamentos DESC;"
+        "enunciado": "Liste o funcionário que tem o maior salário dentro de cada departamento (Correlated Subquery).",
+        "resposta_base": "SELECT e.first_name, e.salary, e.department_id FROM employees e WHERE e.salary = (SELECT MAX(salary) FROM employees WHERE department_id = e.department_id);"
       },
       {
         "id": 32,
-        "enunciado": "Liste o nome completo do funcionário e o título do cargo para funcionários cujo salário está acima da média de todos os funcionários.",
-        "resposta_base": "SELECT CONCAT(e.first_name, ' ', e.last_name) AS nome_completo, j.job_title\nFROM employees e\nJOIN jobs j ON e.job_id = j.job_id\nWHERE e.salary > (SELECT AVG(salary) FROM employees)\nORDER BY e.salary DESC;"
+        "enunciado": "Encontre a cidade que possui o maior número de departamentos (use LIMIT).",
+        "resposta_base": "SELECT l.city, COUNT(d.department_id) AS qtd FROM locations l JOIN departments d ON l.location_id = d.location_id GROUP BY l.city ORDER BY qtd DESC LIMIT 1;"
       },
       {
         "id": 33,
-        "enunciado": "Para cada país, liste o nome do país e a quantidade de localidades com código postal preenchido.",
-        "resposta_base": "SELECT c.country_name, COUNT(l.location_id) AS num_localidades\nFROM countries c\nJOIN locations l ON l.country_id = c.country_id\nWHERE l.postal_code IS NOT NULL\nGROUP BY c.country_name\nORDER BY num_localidades DESC;"
+        "enunciado": "Liste todos os funcionários que já mudaram de cargo no passado (estão na tabela job_history).",
+        "resposta_base": "SELECT e.first_name, e.last_name FROM employees e WHERE e.employee_id IN (SELECT employee_id FROM job_history);"
       },
       {
         "id": 34,
-        "enunciado": "Liste o nome completo dos funcionários que não recebem comissão.",
-        "resposta_base": "SELECT CONCAT(first_name, ' ', last_name) AS nome_completo\nFROM employees\nWHERE commission_pct IS NULL\nORDER BY nome_completo;"
+        "enunciado": "Calcule a média salarial por ano de contratação (extraia o ano da data).",
+        "resposta_base": "SELECT EXTRACT(YEAR FROM hire_date) AS ano, AVG(salary) FROM employees GROUP BY EXTRACT(YEAR FROM hire_date) ORDER BY ano;"
       },
       {
         "id": 35,
-        "enunciado": "Liste o nome do departamento e o nome completo do gerente responsável por ele.",
-        "resposta_base": "SELECT d.department_name, CONCAT(m.first_name, ' ', m.last_name) AS nome_gerente\nFROM departments d\nJOIN employees m ON d.manager_id = m.employee_id\nORDER BY d.department_name;"
+        "enunciado": "Liste os funcionários cujo salário é igual ao salário mínimo do seu cargo (jobs).",
+        "resposta_base": "SELECT e.first_name, e.salary, j.job_title FROM employees e JOIN jobs j ON e.job_id = j.job_id WHERE e.salary = j.min_salary;"
       },
       {
         "id": 36,
-        "enunciado": "Liste o nome completo do funcionário e a quantidade de departamentos diferentes em que ele já trabalhou (histórico de cargos), mostrando apenas quem trabalhou em mais de um.",
-        "resposta_base": "SELECT CONCAT(e.first_name, ' ', e.last_name) AS nome_completo, COUNT(DISTINCT j.department_id) AS num_departamentos\nFROM employees e\nJOIN job_history j ON e.employee_id = j.employee_id\nGROUP BY e.employee_id, e.first_name, e.last_name\nHAVING COUNT(DISTINCT j.department_id) > 1\nORDER BY num_departamentos DESC;"
+        "enunciado": "Exiba o nome do funcionário e o nome do departamento. Se não tiver departamento, exiba 'Sem Departamento' (Left Join + Coalesce).",
+        "resposta_base": "SELECT e.first_name, COALESCE(d.department_name, 'Sem Departamento') FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id;"
       },
       {
         "id": 37,
-        "enunciado": "Liste títulos de cargo cujo intervalo salarial (max_salary - min_salary) seja maior que 5000.",
-        "resposta_base": "SELECT job_title, (max_salary - min_salary) AS faixa_salarial\nFROM jobs\nWHERE (max_salary - min_salary) > 5000\nORDER BY faixa_salarial DESC;"
+        "enunciado": "Liste o histórico de cargos do funcionário 101, mostrando o título do cargo antigo e o nome do departamento antigo.",
+        "resposta_base": "SELECT jh.start_date, jh.end_date, j.job_title, d.department_name FROM job_history jh JOIN jobs j ON jh.job_id = j.job_id JOIN departments d ON jh.department_id = d.department_id WHERE jh.employee_id = 101;"
       },
       {
         "id": 38,
-        "enunciado": "Liste os departamentos e a média de salário dos funcionários em cada um, exibindo 0 para departamentos sem funcionários.",
-        "resposta_base": "SELECT d.department_name, COALESCE(ROUND(AVG(e.salary)::numeric,2),0) AS salario_medio\nFROM departments d\nLEFT JOIN employees e ON e.department_id = d.department_id\nGROUP BY d.department_name\nORDER BY salario_medio DESC;"
+        "enunciado": "Liste os departamentos onde a soma dos salários é maior que a soma dos salários do departamento 50.",
+        "resposta_base": "SELECT department_id, SUM(salary) FROM employees GROUP BY department_id HAVING SUM(salary) > (SELECT SUM(salary) FROM employees WHERE department_id = 50);"
       },
       {
         "id": 39,
-        "enunciado": "Liste os 5 funcionários com a data de contratação mais antiga, mostrando nome completo e data de contratação.",
-        "resposta_base": "SELECT CONCAT(first_name, ' ', last_name) AS nome_completo, hire_date\nFROM employees\nORDER BY hire_date ASC\nLIMIT 5;"
+        "enunciado": "Liste os funcionários que não recebem comissão e trabalham em departamentos localizados nos Estados Unidos (US).",
+        "resposta_base": "SELECT e.first_name FROM employees e JOIN departments d ON e.department_id = d.department_id JOIN locations l ON d.location_id = l.location_id WHERE e.commission_pct IS NULL AND l.country_id = 'US';"
       },
       {
         "id": 40,
-        "enunciado": "Liste o nome completo de cada funcionário e a cidade em que ele trabalha, com base no departamento.",
-        "resposta_base": "SELECT CONCAT(e.first_name, ' ', e.last_name) AS nome_completo, l.city\nFROM employees e\nJOIN departments d ON e.department_id = d.department_id\nJOIN locations l ON d.location_id = l.location_id\nORDER BY nome_completo;"
+        "enunciado": "Liste o nome completo e o cargo atual dos funcionários que trabalharam anteriormente como 'Programmer' (job_id = IT_PROG no histórico).",
+        "resposta_base": "SELECT e.first_name, e.last_name, j.job_title FROM employees e JOIN jobs j ON e.job_id = j.job_id WHERE EXISTS (SELECT 1 FROM job_history jh WHERE jh.employee_id = e.employee_id AND jh.job_id = 'IT_PROG');"
       }
     ]
   },
@@ -209,203 +209,203 @@
     "questions": [
       {
         "id": 1,
-        "enunciado": "Liste todas as cidades distintas da tabela de endereços.",
+        "enunciado": "Liste todas as cidades distintas presentes na tabela de endereços.",
         "resposta_base": "SELECT DISTINCT city FROM addresses;"
       },
       {
         "id": 2,
-        "enunciado": "Encontre todos os endereços (rua e cidade) localizados em 'Springfield'.",
-        "resposta_base": "SELECT street, city FROM addresses WHERE city = 'Springfield';"
-      },
-      {
-        "id": 3,
-        "enunciado": "Liste o primeiro nome, sobrenome e email de todos os membros.",
-        "resposta_base": "SELECT first_name, last_name, email FROM members;"
-      },
-      {
-        "id": 4,
-        "enunciado": "Encontre todos os membros (nome completo) nascidos após 1 de janeiro de 2003.",
-        "resposta_base": "SELECT first_name, last_name FROM members WHERE date_of_birth > '2003-01-01';"
-      },
-      {
-        "id": 5,
         "enunciado": "Liste o nome e a abreviação de todos os departamentos.",
         "resposta_base": "SELECT name, abbreviation FROM departments;"
       },
       {
+        "id": 3,
+        "enunciado": "Encontre o primeiro nome, sobrenome e e-mail de todos os membros.",
+        "resposta_base": "SELECT first_name, last_name, email FROM members;"
+      },
+      {
+        "id": 4,
+        "enunciado": "Liste os cursos que valem mais de 3 créditos.",
+        "resposta_base": "SELECT course_name, credits FROM courses WHERE credits > 3;"
+      },
+      {
+        "id": 5,
+        "enunciado": "Liste o ID e a nota (grade) de todas as matrículas onde a nota não é nula, ordenado da maior para a menor.",
+        "resposta_base": "SELECT student_id, class_id, grade FROM enrollments WHERE grade IS NOT NULL ORDER BY grade DESC;"
+      },
+      {
         "id": 6,
-        "enunciado": "Liste o nome e os créditos de todos os cursos que valem 3 créditos.",
-        "resposta_base": "SELECT course_name, credits FROM courses WHERE credits = 3;"
+        "enunciado": "Liste os membros que nasceram antes do ano 2000.",
+        "resposta_base": "SELECT first_name, last_name, date_of_birth FROM members WHERE date_of_birth < '2000-01-01';"
       },
       {
         "id": 7,
-        "enunciado": "Encontre o nome de todos os programas que são do tipo 'Bachelors'.",
-        "resposta_base": "SELECT program_name FROM programs WHERE degree_type = 'Bachelors';"
+        "enunciado": "Liste os programas do tipo 'Bachelors' oferecidos pelo departamento com ID 1.",
+        "resposta_base": "SELECT program_name FROM programs WHERE degree_type = 'Bachelors' AND department_id = 1;"
       },
       {
         "id": 8,
-        "enunciado": "Liste todos os dados das matrículas onde o aluno foi reprovado.",
-        "resposta_base": "SELECT * FROM enrollments WHERE status = 'Failed';"
+        "enunciado": "Encontre as turmas (classes) agendadas para a sala (room) '101A'.",
+        "resposta_base": "SELECT class_id, semester, schedule FROM classes WHERE room = '101A';"
       },
       {
         "id": 9,
-        "enunciado": "Encontre o class_id e student_id das matrículas que tiveram 5 ou mais faltas.",
-        "resposta_base": "SELECT class_id, student_id FROM enrollments WHERE absences >= 5;"
+        "enunciado": "Liste as matrículas com status 'Failed' ou que tenham mais de 10 faltas (absences).",
+        "resposta_base": "SELECT * FROM enrollments WHERE status = 'Failed' OR absences > 10;"
       },
       {
         "id": 10,
-        "enunciado": "Liste os nomes de todos os cursos ordenados alfabeticamente.",
-        "resposta_base": "SELECT course_name FROM courses ORDER BY course_name;"
+        "enunciado": "Concatene o primeiro e o último nome dos membros em uma coluna chamada 'nome_completo'.",
+        "resposta_base": "SELECT first_name || ' ' || last_name AS nome_completo FROM members;"
       },
       {
         "id": 11,
-        "enunciado": "Liste o nome completo de todos os membros que são estudantes.",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN students s ON m.member_id = s.student_id;"
+        "enunciado": "Liste o nome completo dos alunos e a data de início do curso.",
+        "resposta_base": "SELECT m.first_name, m.last_name, s.start_date FROM members m JOIN students s ON m.member_id = s.student_id;"
       },
       {
         "id": 12,
-        "enunciado": "Liste o nome completo e o título de todos os membros que são professores.",
-        "resposta_base": "SELECT m.first_name, m.last_name, p.title FROM members m JOIN professors p ON m.member_id = p.professor_id;"
+        "enunciado": "Liste o nome do professor e o nome do departamento ao qual ele pertence.",
+        "resposta_base": "SELECT m.first_name, d.name AS departamento FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN departments d ON p.department_id = d.department_id;"
       },
       {
         "id": 13,
-        "enunciado": "Mostre o nome completo dos professores e o nome do departamento em que trabalham.",
-        "resposta_base": "SELECT m.first_name, m.last_name, d.name AS department_name FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN departments d ON p.department_id = d.department_id;"
+        "enunciado": "Exiba o nome do curso e o nome do seu pré-requisito (Self Join).",
+        "resposta_base": "SELECT c.course_name AS curso, pre.course_name AS pre_requisito FROM courses c JOIN course_prerequisites cp ON c.course_id = cp.course_id JOIN courses pre ON cp.prerequisite_course_id = pre.course_id;"
       },
       {
         "id": 14,
-        "enunciado": "Liste o nome completo de todos os professores do departamento de TI.",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN departments d ON p.department_id = d.department_id WHERE d.abbreviation = 'IT';"
+        "enunciado": "Calcule a idade atual de cada membro utilizando a data de nascimento (Use EXTRACT ou Age).",
+        "resposta_base": "SELECT first_name, last_name, EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM date_of_birth) AS idade_aproximada FROM members;"
       },
       {
         "id": 15,
-        "enunciado": "Conte quantos professores  existem em cada departamento. Liste o nome do departamento e a contagem.",
-        "resposta_base": "SELECT d.name, COUNT(p.professor_id) AS total_professors FROM departments d LEFT JOIN professors p ON d.department_id = p.department_id GROUP BY d.name;"
+        "enunciado": "Liste o nome dos programas e o nome completo do coordenador responsável, formatado como 'SOBRENOME, Nome' (Use UPPER).",
+        "resposta_base": "SELECT p.program_name, UPPER(m.last_name) || ', ' || m.first_name AS coordenador FROM programs p JOIN members m ON p.coordinator_id = m.member_id;"
       },
       {
         "id": 16,
-        "enunciado": "Liste o nome de cada programa e o nome completo do seu coordenador.",
-        "resposta_base": "SELECT prog.program_name, m.first_name, m.last_name AS coordinator_name FROM programs prog JOIN professors p ON prog.coordinator_id = p.professor_id JOIN members m ON p.professor_id = m.member_id;"
+        "enunciado": "Conte quantos alunos estão matriculados em cada programa (Group By).",
+        "resposta_base": "SELECT p.program_name, COUNT(s.student_id) AS total_alunos FROM programs p JOIN students s ON p.program_id = s.program_id GROUP BY p.program_name;"
       },
       {
         "id": 17,
-        "enunciado": "Encontre o nome do coordenador do programa 'Data Science'.",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN programs prog ON p.professor_id = prog.coordinator_id WHERE prog.program_name = 'Data Science';"
+        "enunciado": "Liste as turmas (ID e Semestre) que possuem média de notas superior a 7.0.",
+        "resposta_base": "SELECT class_id, semester, AVG(grade) AS media_turma FROM enrollments GROUP BY class_id, semester HAVING AVG(grade) > 7.0;"
       },
       {
         "id": 18,
-        "enunciado": "Liste os nomes dos cursos ecionados pelo professor 'Iris Chen'.",
-        "resposta_base": "SELECT DISTINCT c.course_name FROM courses c JOIN classes cl ON c.course_id = cl.course_id WHERE cl.professor_id = 33;"
+        "enunciado": "Liste o nome completo dos membros que moram na cidade de 'Springfield' (Join com Addresses).",
+        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN addresses a ON m.address_id = a.address_id WHERE a.city = 'Springfield';"
       },
       {
         "id": 19,
-        "enunciado": "Calcule a nota média de todos os alunos na turma de ID 1 (Intro to Programming, 2024/2).",
-        "resposta_base": "SELECT AVG(grade) FROM enrollments WHERE class_id = 1 AND grade IS NOT NULL;"
+        "enunciado": "Exiba a nota final dos alunos. Se a nota for nula, exiba 0 (Use COALESCE).",
+        "resposta_base": "SELECT student_id, class_id, COALESCE(grade, 0) AS nota_final FROM enrollments;"
       },
       {
         "id": 20,
-        "enunciado": "Liste o nome completo de todos os alunos que estão 'Enrolled' (matriculados) na turma (class_id) 5 (Data Structures).",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN enrollments e ON m.member_id = e.student_id WHERE e.class_id = 5 AND e.status = 'Enrolled';"
+        "enunciado": "Liste os professores que foram contratados no mesmo ano que o coordenador do departamento deles.",
+        "resposta_base": "SELECT m.first_name, p.start_date FROM professors p JOIN members m ON p.professor_id = m.member_id JOIN programs prog ON p.department_id = prog.department_id JOIN professors coord ON prog.coordinator_id = coord.professor_id WHERE EXTRACT(YEAR FROM p.start_date) = EXTRACT(YEAR FROM coord.start_date);"
       },
       {
         "id": 21,
-        "enunciado": "Liste o nome completo de todos os alunos que foram reprovados ('Failed') em qualquer disciplina.",
-        "resposta_base": "SELECT DISTINCT m.first_name, m.last_name FROM members m JOIN enrollments e ON m.member_id = e.student_id WHERE e.status = 'Failed';"
+        "enunciado": "Crie uma coluna 'Situacao' que mostre 'Aprovado' para notas >= 6 e 'Reprovado' para notas < 6 (Use CASE).",
+        "resposta_base": "SELECT student_id, class_id, grade, CASE WHEN grade >= 6 THEN 'Aprovado' ELSE 'Reprovado' END AS situacao FROM enrollments WHERE grade IS NOT NULL;"
       },
       {
         "id": 22,
-        "enunciado": "Conte quantos alunos estão matriculados ('Enrolled') em cada turma (class_id) no semestre '2025/1'. Liste o class_id e a contagem.",
-        "resposta_base": "SELECT cl.class_id, COUNT(e.student_id) AS student_count FROM classes cl JOIN enrollments e ON cl.class_id = e.class_id WHERE cl.semester = '2025/1' AND e.status = 'Enrolled' GROUP BY cl.class_id;"
+        "enunciado": "Liste os cursos que NÃO possuem pré-requisitos (Use LEFT JOIN com verificação de NULL).",
+        "resposta_base": "SELECT c.course_name FROM courses c LEFT JOIN course_prerequisites cp ON c.course_id = cp.course_id WHERE cp.prerequisite_course_id IS NULL;"
       },
       {
         "id": 23,
-        "enunciado": "Liste o nome de todos os cursos (course_name) que são pré-requisitos para 'Data Structures' (course_id 2).",
-        "resposta_base": "SELECT c_pre.course_name FROM courses c_pre JOIN course_prerequisites cp ON c_pre.course_id = cp.prerequisite_course_id WHERE cp.course_id = 2;"
+        "enunciado": "Liste o nome completo e e-mail dos membros cujo e-mail termina com '@university.edu' (Use LIKE).",
+        "resposta_base": "SELECT first_name, last_name, email FROM members WHERE email LIKE '%@university.edu';"
       },
       {
         "id": 24,
-        "enunciado": "Liste o nome de todos os cursos (course_name) para os quais 'Calculus I' (course_id 6) é um pré-requisito.",
-        "resposta_base": "SELECT c.course_name FROM courses c JOIN course_prerequisites cp ON c.course_id = cp.course_id WHERE cp.prerequisite_course_id = 6;"
+        "enunciado": "Encontre o departamento que tem o maior número de cursos ofertados (Limit 1).",
+        "resposta_base": "SELECT d.name, COUNT(p.program_id) AS qtd_programas FROM departments d JOIN programs p ON d.department_id = p.department_id GROUP BY d.name ORDER BY qtd_programas DESC LIMIT 1;"
       },
       {
         "id": 25,
-        "enunciado": "Encontre a rua (street) e a cidade (city) onde mora o membro 'Michael Johnson'.",
-        "resposta_base": "SELECT a.street, a.city FROM addresses a JOIN members m ON a.address_id = m.address_id WHERE m.first_name = 'Michael' AND m.last_name = 'Johnson';"
+        "enunciado": "Liste os alunos que nunca tiveram nenhuma falta (absences = 0) em nenhuma matrícula.",
+        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN enrollments e ON m.member_id = e.student_id WHERE e.absences = 0;"
       },
       {
         "id": 26,
-        "enunciado": "Liste todos os programas (program_name) oferecidos pelo departamento 'Mathematics' (MATH).",
-        "resposta_base": "SELECT p.program_name FROM programs p JOIN departments d ON p.department_id = d.department_id WHERE d.abbreviation = 'MATH';"
+        "enunciado": "Calcule a taxa de reprovação (percentual de status 'Failed') por curso (Use CASE dentro de SUM).",
+        "resposta_base": "SELECT c.course_name, (SUM(CASE WHEN e.status = 'Failed' THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) AS taxa_reprovacao FROM courses c JOIN classes cl ON c.course_id = cl.course_id JOIN enrollments e ON cl.class_id = e.class_id GROUP BY c.course_name;"
       },
       {
         "id": 27,
-        "enunciado": "Liste o nome completo dos alunos e suas notas (grade) na turma (class_id) 2 (Calculus I).",
-        "resposta_base": "SELECT m.first_name, m.last_name, e.grade FROM members m JOIN enrollments e ON m.member_id = e.student_id WHERE e.class_id = 2;"
+        "enunciado": "Liste os alunos que estão matriculados em turmas de departamentos diferentes do departamento do seu programa principal.",
+        "resposta_base": "SELECT DISTINCT m.first_name, m.last_name FROM students s JOIN members m ON s.student_id = m.member_id JOIN programs p_aluno ON s.program_id = p_aluno.program_id JOIN enrollments e ON s.student_id = e.student_id JOIN classes cl ON e.class_id = cl.class_id JOIN courses c ON cl.course_id = c.course_id JOIN programs p_curso ON cl.program_id = p_curso.program_id WHERE p_aluno.department_id <> p_curso.department_id;"
       },
       {
         "id": 28,
-        "enunciado": "Encontre o nome de todos os cursos (course_name) que estão sendo oferecidos (possuem turmas) no semestre '2025/1'. Use DISTINCT.",
-        "resposta_base": "SELECT DISTINCT c.course_name FROM courses c JOIN classes cl ON c.course_id = cl.course_id WHERE cl.semester = '2025/1';"
+        "enunciado": "Liste os professores que lecionam mais de 3 turmas em um único semestre.",
+        "resposta_base": "SELECT m.first_name, cl.semester, COUNT(cl.class_id) FROM professors p JOIN members m ON p.professor_id = m.member_id JOIN classes cl ON p.professor_id = cl.professor_id GROUP BY m.first_name, cl.semester HAVING COUNT(cl.class_id) > 3;"
       },
       {
         "id": 29,
-        "enunciado": "Liste o nome completo de todos os alunos que desistiram ('Withdrawn') de 'Web Development' (course_id 14).",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN enrollments e ON m.member_id = e.student_id JOIN classes cl ON e.class_id = cl.class_id WHERE e.status = 'Withdrawn' AND cl.course_id = 14;"
+        "enunciado": "Liste o nome completo dos alunos que não estão matriculados em nenhuma turma atualmente (Use NOT EXISTS ou NOT IN).",
+        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN students s ON m.member_id = s.student_id WHERE s.student_id NOT IN (SELECT student_id FROM enrollments WHERE status = 'Enrolled');"
       },
       {
         "id": 30,
-        "enunciado": "Encontre o nome e a descrição dos cursos (courses) que não possuem pré-requisitos (não estão na coluna course_id de course_prerequisites).",
-        "resposta_base": "SELECT c.course_name, c.course_description FROM courses c LEFT JOIN course_prerequisites cp ON c.course_id = cp.course_id WHERE cp.course_id IS NULL;"
+        "enunciado": "Liste o nome dos cursos que são pré-requisitos para mais de um outro curso.",
+        "resposta_base": "SELECT c.course_name, COUNT(cp.course_id) AS qtd_dependencias FROM courses c JOIN course_prerequisites cp ON c.course_id = cp.prerequisite_course_id GROUP BY c.course_name HAVING COUNT(cp.course_id) > 1;"
       },
       {
         "id": 31,
-        "enunciado": "Liste o nome completo dos alunos e os nomes dos cursos (course_name) em que estão atualmente 'Enrolled' (Matriculados).",
-        "resposta_base": "SELECT m.first_name, m.last_name, c.course_name FROM members m JOIN enrollments e ON m.member_id = e.student_id JOIN classes cl ON e.class_id = cl.class_id JOIN courses c ON cl.course_id = c.course_id WHERE e.status = 'Enrolled';"
+        "enunciado": "Exiba o histórico escolar de um aluno (ex: ID 10) mostrando Semestre, Curso, Nota e Status, ordenado pelo semestre.",
+        "resposta_base": "SELECT cl.semester, c.course_name, e.grade, e.status FROM enrollments e JOIN classes cl ON e.class_id = cl.class_id JOIN courses c ON cl.course_id = c.course_id WHERE e.student_id = 10 ORDER BY cl.semester;"
       },
       {
         "id": 32,
-        "enunciado": "Calcule a nota média (grade) de alunos 'Passed' (Aprovados) para cada professor no semestre '2024/2'. Liste o nome do professor e a média.",
-        "resposta_base": "SELECT m.first_name, m.last_name, AVG(e.grade) AS average_grade FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN classes cl ON p.professor_id = cl.professor_id JOIN enrollments e ON cl.class_id = e.class_id WHERE cl.semester = '2024/2' AND e.status = 'Passed' GROUP BY m.member_id, m.first_name, m.last_name;"
+        "enunciado": "Liste os departamentos onde a soma dos créditos de todos os programas é maior que 100.",
+        "resposta_base": "SELECT d.name, SUM(p.credits) FROM departments d JOIN programs p ON d.department_id = p.department_id GROUP BY d.name HAVING SUM(p.credits) > 100;"
       },
       {
         "id": 33,
-        "enunciado": "Encontre o professor (nome completo) que leciona para o maior número de alunos (soma de matrículas 'Enrolled') no semestre '2025/1'.",
-        "resposta_base": "SELECT m.first_name, m.last_name, COUNT(e.student_id) AS student_count FROM members m JOIN professors p ON m.member_id = p.professor_id JOIN classes cl ON p.professor_id = cl.professor_id JOIN enrollments e ON cl.class_id = e.class_id WHERE cl.semester = '2025/1' AND e.status = 'Enrolled' GROUP BY m.member_id, m.first_name, m.last_name ORDER BY student_count DESC LIMIT 1;"
+        "enunciado": "Encontre o aluno com a maior média de notas acumulada em toda a universidade.",
+        "resposta_base": "SELECT m.first_name, AVG(e.grade) AS media_geral FROM members m JOIN enrollments e ON m.member_id = e.student_id WHERE e.grade IS NOT NULL GROUP BY m.member_id, m.first_name ORDER BY media_geral DESC LIMIT 1;"
       },
       {
         "id": 34,
-        "enunciado": "Liste os alunos (nome completo) que estão 'Enrolled' em 'Data Structures' (ID 2) e que já 'Failed' (Reprovaram) em 'Introduction to Programming' (ID 1) em algum momento.",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN students s ON m.member_id = s.student_id WHERE s.student_id IN (SELECT e.student_id FROM enrollments e JOIN classes cl ON e.class_id = cl.class_id WHERE cl.course_id = 2 AND e.status = 'Enrolled') AND s.student_id IN (SELECT e.student_id FROM enrollments e JOIN classes cl ON e.class_id = cl.class_id WHERE cl.course_id = 1 AND e.status = 'Failed');"
+        "enunciado": "Liste os professores que moram na mesma cidade que a universidade (considerando 'Springfield' como a cidade da uni).",
+        "resposta_base": "SELECT m.first_name, m.last_name, a.city FROM professors p JOIN members m ON p.professor_id = m.member_id JOIN addresses a ON m.address_id = a.address_id WHERE a.city = 'Springfield';"
       },
       {
         "id": 35,
-        "enunciado": "Encontre o curso (course_name) com a maior taxa de reprovação (percentual de 'Failed') no semestre '2024/2'.",
-        "resposta_base": "SELECT c.course_name, (SUM(CASE WHEN e.status = 'Failed' THEN 1 ELSE 0 END) * 100.0 / COUNT(e.student_id)) AS failure_rate FROM courses c JOIN classes cl ON c.course_id = cl.course_id JOIN enrollments e ON cl.class_id = e.class_id WHERE cl.semester = '2024/2' GROUP BY c.course_id, c.course_name ORDER BY failure_rate DESC LIMIT 1;"
+        "enunciado": "Liste os cursos que nunca tiveram nenhum aluno reprovado ('Failed').",
+        "resposta_base": "SELECT c.course_name FROM courses c WHERE NOT EXISTS (SELECT 1 FROM classes cl JOIN enrollments e ON cl.class_id = e.class_id WHERE cl.course_id = c.course_id AND e.status = 'Failed');"
       },
       {
         "id": 36,
-        "enunciado": "Liste os nomes de todos os alunos (students) que NÃO estão matriculados (enrolled) em NENHUMA turma (class) no semestre '2025/1'.",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN students s ON m.member_id = s.student_id WHERE s.student_id NOT IN (SELECT DISTINCT e.student_id FROM enrollments e JOIN classes cl ON e.class_id = cl.class_id WHERE cl.semester = '2025/1');"
+        "enunciado": "Classifique as turmas por tamanho: 'Pequena' (<10 alunos), 'Média' (10-30), 'Grande' (>30) (Use CASE e Subquery).",
+        "resposta_base": "SELECT class_id, qtd_alunos, CASE WHEN qtd_alunos < 10 THEN 'Pequena' WHEN qtd_alunos BETWEEN 10 AND 30 THEN 'Média' ELSE 'Grande' END AS tamanho FROM (SELECT class_id, COUNT(student_id) as qtd_alunos FROM enrollments GROUP BY class_id) sub;"
       },
       {
         "id": 37,
-        "enunciado": "Liste o nome dos programas (program_name), o nome completo do coordenador e o nome do departamento do coordenador.",
-        "resposta_base": "SELECT prog.program_name, m.first_name AS coord_name, m.last_name AS coord_lastname, d.name AS coord_dept_name FROM programs prog JOIN professors p ON prog.coordinator_id = p.professor_id JOIN members m ON p.professor_id = m.member_id JOIN departments d ON p.department_id = d.department_id;"
+        "enunciado": "Liste os alunos que reprovaram em uma disciplina e a cursaram novamente (aprovados ou não) em um semestre posterior.",
+        "resposta_base": "SELECT DISTINCT m.first_name, c.course_name FROM members m JOIN enrollments e1 ON m.member_id = e1.student_id JOIN classes cl1 ON e1.class_id = cl1.class_id JOIN enrollments e2 ON m.member_id = e2.student_id JOIN classes cl2 ON e2.class_id = cl2.class_id JOIN courses c ON cl1.course_id = c.course_id WHERE e1.status = 'Failed' AND cl1.course_id = cl2.course_id AND cl2.semester > cl1.semester;"
       },
       {
         "id": 38,
-        "enunciado": "Liste alunos (nome completo) que estão 'Enrolled' em turmas (classes) de programas (programs) de pelo menos dois departamentos (departments) diferentes no semestre '2025/1'.",
-        "resposta_base": "SELECT m.first_name, m.last_name FROM members m JOIN enrollments e ON m.member_id = e.student_id JOIN classes cl ON e.class_id = cl.class_id JOIN programs p ON cl.program_id = p.program_id WHERE e.status = 'Enrolled' AND cl.semester = '2025/1' GROUP BY m.member_id, m.first_name, m.last_name HAVING COUNT(DISTINCT p.department_id) >= 2;"
+        "enunciado": "Identifique se existem membros que são, ao mesmo tempo, Alunos e Professores (Interseção de IDs).",
+        "resposta_base": "SELECT m.first_name, m.last_name FROM members m WHERE m.member_id IN (SELECT student_id FROM students) AND m.member_id IN (SELECT professor_id FROM professors);"
       },
       {
         "id": 39,
-        "enunciado": "Encontre o nome completo dos alunos (students) que moram na mesma cidade (city) que o professor 'Dr. Evelyn Reed' (professor_id 31).",
-        "resposta_base": "SELECT m_stud.first_name, m_stud.last_name FROM members m_stud JOIN addresses a_stud ON m_stud.address_id = a_stud.address_id JOIN students s ON m_stud.member_id = s.student_id WHERE a_stud.city = (SELECT a_prof.city FROM addresses a_prof JOIN members m_prof ON a_prof.address_id = m_prof.address_id WHERE m_prof.member_id = 31);"
+        "enunciado": "Liste os coordenadores de programas que também lecionam aulas no mesmo programa que coordenam.",
+        "resposta_base": "SELECT m.first_name AS coordenador, p.program_name FROM programs p JOIN professors prof ON p.coordinator_id = prof.professor_id JOIN members m ON prof.professor_id = m.member_id JOIN classes cl ON prof.professor_id = cl.professor_id WHERE cl.program_id = p.program_id;"
       },
       {
         "id": 40,
-        "enunciado": "Encontre alunos (nome completo) que moram na mesma cidade (city) que o coordenador (professor) do programa (program) em que estão matriculados (em qualquer turma).",
-        "resposta_base": "SELECT DISTINCT m_stud.first_name, m_stud.last_name FROM members m_stud JOIN addresses a_stud ON m_stud.address_id = a_stud.address_id JOIN enrollments e ON m_stud.member_id = e.student_id JOIN classes cl ON e.class_id = cl.class_id JOIN programs p ON cl.program_id = p.program_id JOIN members m_coord ON p.coordinator_id = m_coord.member_id JOIN addresses a_coord ON m_coord.address_id = a_coord.address_id WHERE a_stud.city = a_coord.city;"
+        "enunciado": "Liste o nome do aluno e o nome do professor orientador (Coordenador do programa do aluno), mas apenas se morarem na mesma cidade.",
+        "resposta_base": "SELECT m_aluno.first_name AS aluno, m_prof.first_name AS coordenador, a_aluno.city FROM students s JOIN members m_aluno ON s.student_id = m_aluno.member_id JOIN addresses a_aluno ON m_aluno.address_id = a_aluno.address_id JOIN programs p ON s.program_id = p.program_id JOIN members m_prof ON p.coordinator_id = m_prof.member_id JOIN addresses a_prof ON m_prof.address_id = a_prof.address_id WHERE a_aluno.city = a_prof.city;"
       }
     ]
   }
