@@ -36,14 +36,14 @@ export default function Header({
       }
     >
       <div className="flex flex-1 items-center justify-start gap-4">
-        {slug && (
+        {/* {slug && (
           <Link
             href={'/'}
             className="p-2 text-4xl hover:transition-all hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50"
           >
             <IoIosArrowDropleftCircle className="hover:text-blue-50 " />
           </Link>
-        )}
+        )} */}
         {showActionButtons && (
           <button
             id="btnNext"
@@ -55,11 +55,11 @@ export default function Header({
         )}
       </div>
 
-      <div className="flex flex-1 items-center justify-center">
+      <Link href="/" className="flex flex-1 items-center justify-center">
         <h1 className="capitalize text-2xl font-bold">
           SQL Trail {slug ? '- ' + slug.replace(/-/g, ' ') : ''}
         </h1>
-      </div>
+      </Link>
 
       <div className="flex flex-1 items-center justify-end">
         {showActionButtons && (

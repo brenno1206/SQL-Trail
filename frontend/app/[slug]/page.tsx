@@ -134,7 +134,6 @@ export default function Home() {
     setAlunoFooter('');
     setBaseFooter('');
 
-    // TO DO: enviar também o slug da questão
     const payload = {
       student_sql: sqlQuery,
       question_id: questionId,
