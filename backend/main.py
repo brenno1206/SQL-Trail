@@ -96,10 +96,26 @@ def supabase_query(supabase_client, sql: str, max_rows: int = 20, retries: int =
 def compare_results(base_sql, student_sql, base_res, student_res):
 
     base_upper = " " + base_sql.upper().replace('\n', ' ') + " "
-    stu_upper = " " + student_sql.upper().replace('\n', ' ') + " "
 
     base_data = base_res.get('data')
     stu_data = student_res.get('data')
+    
+    def normalize_df(df):
+        df = df.round(2)
+        df = df.astype(str)
+        df = df.map(lambda x: x.strip().lower() if isinstance(x, str) else x)
+        return df
+    
+    def sort_matrix(df):
+        return sorted(df.values.tolist())
+    
+    def get_alphanumeric_fingerprint(df):
+        fingerprints = []
+        for _, row in df.iterrows():
+            row_str = "".join([str(x) for x in row.values])
+            clean_str = re.sub(r'[^a-z0-9]', '', row_str.lower())
+            fingerprints.append(clean_str)
+        return sorted(fingerprints)
 
     if not base_data or not stu_data:
         return False, "Erro: Dados incompletos ou consulta retornou vazio."
@@ -111,39 +127,24 @@ def compare_results(base_sql, student_sql, base_res, student_res):
         return True, "Parabéns, sua consulta está correta."
     
     # Normalização básica
-    def normalize_df(df):
-        df = df.round(2)
-        df = df.astype(str)
-        df = df.map(lambda x: x.strip().lower() if isinstance(x, str) else x)
-        return df
-
     df_base_norm = normalize_df(df_base)
     df_stu_norm = normalize_df(df_stu)
 
     # NÍVEL 1: Conteúdo Correto, Ordem Correta
     if df_base_norm.values.tolist() == df_stu_norm.values.tolist():
-        return True, "Parabéns, sua consulta está correta."
+        return True, "Parabéns! As consultas são equivalentes."
 
     # NÍVEL 2: Conteúdo Correto, Ordem Errada
-    def sort_matrix(df):
-        return sorted(df.values.tolist())
 
     if sort_matrix(df_base_norm) == sort_matrix(df_stu_norm):
-        if re.search(r'\bORDER\s+BY\b', base_upper) and not re.search(r'\bORDER\s+BY\b', stu_upper):
-            return False, "Os dados estão corretos, mas parece que você esqueceu de usar 'ORDER BY'."
+        if re.search(r'\bORDER\s+BY\b', base_upper):
+            return False, "Os dados estão corretos, mas a ordem está errada."
         return True, "Parabéns, sua consulta está correta."
 
     # NÍVEL 3: Comparação Alfanumérica 
-    def get_alphanumeric_fingerprint(df):
-        fingerprints = []
-        for _, row in df.iterrows():
-            row_str = "".join([str(x) for x in row.values])
-            clean_str = re.sub(r'[^a-z0-9]', '', row_str.lower())
-            fingerprints.append(clean_str)
-        return sorted(fingerprints)
-
+    
     if get_alphanumeric_fingerprint(df_base_norm) == get_alphanumeric_fingerprint(df_stu_norm):
-        return True, "Parabéns! As consultas são equivalentes."
+        return True, "Parabéns, sua consulta está correta."
 
     return False, "Os dados não conferem."
 

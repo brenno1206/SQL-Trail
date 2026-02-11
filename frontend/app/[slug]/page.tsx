@@ -207,7 +207,7 @@ export default function Home() {
       <main className="flex flex-1 flex-col gap-8 px-10 py-10 md:flex-row">
         <section className="flex flex-col space-y-4 md:w-1/2">
           <div id="enunciado" className="rounded-lg bg-white p-4 shadow">
-            {enunciado}
+            <b>{'Questão ' + questionId + ') '}</b> {enunciado}
           </div>
           <CodeArea
             onEditorChange={onEditorChange}
