@@ -139,3 +139,7 @@ O SQL Trail busca tornar o aprendizado de SQL mais:
 - Próximo de situações reais
 
 Promovendo autonomia e reforçando o aprendizado por meio da prática contínua.
+
+## 📜 License
+
+This project is licensed under the Creative Commons BY-NC 4.0 License — see the LICENSE file for details.
