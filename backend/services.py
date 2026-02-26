@@ -7,7 +7,7 @@ import pandas as pd
 import requests
 
 class QuestionRepository:
-    """Gerencia o carregamento e recuperação das questões do arquivo JSON."""
+    """Gerencia o carregamento e recuperação das questoes do arquivo JSON."""
     def __init__(self, json_path="questoes.json"):
         self.QUESTIONS = {}
         self._load_questions(json_path)
@@ -22,10 +22,10 @@ class QuestionRepository:
                     for q in db['questions']
             }
         except FileNotFoundError:
-            print(f"File {json_path} not found.")
+            print(f"Arquivo {json_path} nao encontrado.")
             self.QUESTIONS = {}
         except Exception as e:
-            print(f"Error loading questions: {e}")
+            print(f"Erro durante o carregamento das questoes: {e}")
             self.QUESTIONS = {}
 
     def get_questions(self, slug):
@@ -37,15 +37,15 @@ class QuestionRepository:
         ]
     
     def get_question(self, slug, id):
-        """Retorna uma questão específica com base no slug e id."""
+        """Retorna uma questao específica com base no slug e id."""
         return self.QUESTIONS.get((slug, id))
     
     def exists(self, slug, id):
-        """Verifica se uma questão existe com base no slug e id."""
+        """Verifica se uma questao existe com base no slug e id."""
         return (slug, id) in self.QUESTIONS
     
 class SupabaseService:
-    """Gerencia conexões e execução de queries RPC no Supabase."""
+    """Gerencia conexoes e execução de queries RPC no Supabase."""
 
     def get_client(self, slug):
         """Cria o cliente Supabase dinamicamente com base no slug."""
@@ -57,7 +57,7 @@ class SupabaseService:
         return create_client(url, key)
     
     def execute_query(self, client, sql: str, max_rows: int = 20, retries: int = 3, backoff: float = 1.0):
-        """Executa a query via RCP com lógica de retry e tratamento de erros."""
+        """Executa a query via RCP com logica de retry e tratamento de erros."""
         sql = sql.strip().rstrip(';')
         last_exception = None
 
@@ -67,17 +67,17 @@ class SupabaseService:
             except Exception as e:
                 last_exception = e
                 if attempt < retries and getattr(e, 'winerror', None) == 10054:
-                    print(f"Connection reset (attempt {attempt}/{retries}). Retrying in {backoff} seconds... (Attempt {attempt}/{retries})")
+                    print(f"Conexao restada (tentativa {attempt}/{retries}). Tentando novamente em {backoff} segundos... (Tentativa {attempt}/{retries})")
                     time.sleep(backoff)
                     backoff *= 2
                     continue
-                print(f"Error executing query: {e}")
+                print(f"Erro executando Query: {e}")
                 return {'data': None, 'error': str(e)}
             
             if getattr(response, 'error', None):
                 print('RPC error:', response.error)
                 error_message = getattr(response.error, 'message', str(response.error))
-                return {'data': None, 'error': f'Error at database: {error_message}'}
+                return {'data': None, 'error': f'Erro no banco de dados: {error_message}'}
 
             data = response.data
 
@@ -85,11 +85,11 @@ class SupabaseService:
                 try:
                     data = json.loads(data)
                 except Exception as e:
-                    print("Failed to parse JSON response.")
-                    return {'data': None, 'error': 'Failed to parse JSON response: {e}'}
+                    print("Falhou em passar para JSON.")
+                    return {'data': None, 'error': 'Falhou em passar para JSON: {e}'}
             
             if not isinstance(data, list):
-                print("Unexpected response format.")
+                print("Formato inesperado.")
                 return {'data': None, 'error': data.get('error') if isinstance(data, dict) else "Formato inesperado"}
              
             total = len(data)
@@ -105,31 +105,31 @@ class SupabaseService:
                 'error': None
             }
         if last_exception:
-            return {'data': None, 'error': f"Failed to execute query after {retries} attempts: {last_exception}"}
-        return {'data': None, 'error': 'Failed to execute query after retries.'}
+            return {'data': None, 'error': f"Falha em executar query apos {retries} tentativas: {last_exception}"}
+        return {'data': None, 'error': 'Falha em executar query apos tentativas.'}
     
 class SQLGrader:
-    """Responsável por analisar e comparar os resultados das queries."""
+    """Responsavel por analisar e comparar os resultados das queries."""
 
     @staticmethod
     def is_select(query: str) -> bool:
         return query.strip().lower().startswith('select')
 
     def compare(self, base_sql, student_sql, base_res, student_res):
-        """Compara os DataFrames resultantes em 3 níveis: Exato, Ordenação, Alfanumérico."""
+        """Compara os DataFrames resultantes em 3 niveis: Exato, Ordenacao, Alfanumerico."""
         base_upper = " " + base_sql.upper().replace('\n', ' ') + " "
         
         base_data = base_res.get('data')
         stu_data = student_res.get('data')
 
         if not base_data or not stu_data:
-            return False, "Error: One of the queries did not return valid data."
+            return False, "Erro. Uma das queries nao retornou dados validos."
 
         df_base = pd.DataFrame(base_data['rows'], columns=base_data['columns'])
         df_stu = pd.DataFrame(stu_data['rows'], columns=stu_data['columns'])
 
         if df_base.empty and df_stu.empty:
-            return True, "Parabéns, sua consulta está correta."
+            return True, "Parabens! As consultas sao equivalentes."
         
         # Normalização
         df_base_norm = self._normalize_df(df_base)
@@ -137,19 +137,19 @@ class SQLGrader:
 
         # NÍVEL 1: Conteúdo Correto, Ordem Correta
         if df_base_norm.values.tolist() == df_stu_norm.values.tolist():
-            return True, "Parabéns! As consultas são equivalentes."
+            return True, "Parabens! As consultas sao equivalentes."
 
         # NÍVEL 2: Conteúdo Correto, Ordem Errada
         if self._sort_matrix(df_base_norm) == self._sort_matrix(df_stu_norm):
             if re.search(r'\bORDER\s+BY\b', base_upper):
                 return False, "Os dados estão corretos, mas a ordem está errada."
-            return True, "Parabéns, sua consulta está correta."
+            return True, "Parabens! As consultas sao equivalentes."
 
         # NÍVEL 3: Comparação Alfanumérica 
         if self._get_alphanumeric_fingerprint(df_base_norm) == self._get_alphanumeric_fingerprint(df_stu_norm):
-            return True, "Parabéns, sua consulta está correta."
+            return True, "Parabens! As consultas sao equivalentes."
 
-        return False, "Os dados não conferem."
+        return False, "Os dados nao conferem."
 
     def _normalize_df(self, df):
         df = df.round(2)
@@ -169,7 +169,7 @@ class SQLGrader:
         return sorted(fingerprints)
     
 class GroqService:
-    """Gerencia a interação com a API do Groq para validação semântica."""
+    """Gerencia a interacao com a API do Groq para validacao semantica."""
     def __init__(self):
         self.api_key = os.getenv('API_KEY')
         self.model = os.getenv('GROQ_MODEL')
@@ -182,10 +182,10 @@ class GroqService:
         }
 
         prompt_system = """
-        Você é um avaliador de SQL de nível especialista, com profundo entendimento de semântica e requisitos de negócio. 
-        Sua tarefa é verificar se a consulta do aluno atende aos requisitos do enunciado...
+        Você eh um avaliador de SQL de nivel especialista, com profundo entendimento de semantica e requisitos de negocio. 
+        Sua tarefa eh verificar se a consulta do aluno atende aos requisitos do enunciado...
         (Prompt original abreviado para brevidade, mas mantido na lógica)
-        Responda estritamente com **True** se a consulta do aluno satisfaz os requisitos do enunciado ou **False** caso contrário.
+        Responda estritamente com **True** se a consulta do aluno satisfaz os requisitos do enunciado ou **False** caso contrario.
         """.strip()
 
         prompt_user = f"""
@@ -207,17 +207,17 @@ class GroqService:
         }
 
         try:
-            print("--- DEBUG: Enviando para Groq API ---")
+            # print("--- DEBUG: Enviando para Groq API ---")
             resp = requests.post(self.url, headers=headers, json=payload, timeout=30)
-            print(f"--- DEBUG: Groq Status Code: {resp.status_code} ---")
+            # print(f"--- DEBUG: Groq Status Code: {resp.status_code} ---")
 
-            if resp.status_code != 200:
-                print(f"--- DEBUG: Erro na API Groq: {resp.text} ---")
+            #if resp.status_code != 200:
+            #    print(f"--- DEBUG: Erro na API Groq: {resp.text} ---")
             
             resp.raise_for_status()
             data = resp.json()
             text = data['choices'][0]['message']['content'].strip().lower()
-            print(f"--- DEBUG: Resposta da IA (limpa): '{text}' ---")
+            # print(f"--- DEBUG: Resposta da IA (limpa): '{text}' ---")
 
             return text.startswith('true')
 

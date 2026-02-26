@@ -19,7 +19,7 @@ grader = SQLGrader()
 def questions():
     slug = request.args.get('slug') 
     if slug is None:
-        return jsonify({'error': 'Parâmetro slug é obrigatório.'}), 400
+        return jsonify({'error': 'O parametro slug e obrigatorio.'}), 400
 
     question_list = repo.get_questions(slug)
     return jsonify(question_list)
@@ -31,7 +31,7 @@ def validate():
 
     # 1. Validações iniciais (Input e Existência)
     if not all([slug, q_id]) or not repo.exists(slug, q_id):
-        return jsonify({'valid': False, 'error': 'Questão inválida ou não carregada.'}), 400
+        return jsonify({'valid': False, 'error': 'Questão invalida ou nao carregada.'}), 400
 
     q_data = repo.get_question(slug, q_id)
     enunciado = q_data['enunciado']
