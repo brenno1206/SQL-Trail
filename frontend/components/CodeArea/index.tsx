@@ -19,7 +19,11 @@ export default function CodeArea({
         height="45vh"
         extensions={[sql()]}
         onChange={onEditorChange}
-        theme="light"
+        theme={
+          window.matchMedia('(prefers-color-scheme: light)').matches
+            ? 'light'
+            : 'dark'
+        }
         className="border-b border-gray-200"
       />
       <button

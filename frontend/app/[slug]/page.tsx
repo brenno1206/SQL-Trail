@@ -181,11 +181,13 @@ export default function Home() {
 
   if (!slug || !slugs.includes(slug)) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-100">
+      <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-50 text-gray-800">
         <Header slug={slug} />
         <main className="flex flex-1 items-center justify-center">
-          <div className="m-10 rounded-lg bg-white p-20 shadow">
-            <h1 className="mb-4 text-2xl font-bold">Trilha não encontrada</h1>
+          <div className="m-10 rounded-lg bg-white dark:bg-gray-800 p-20 shadow">
+            <h1 className="mb-4 text-2xl font-bold dark:text-gray-50 text-gray-800">
+              Trilha não encontrada
+            </h1>
             <p>
               A trilha solicitada não existe. Por favor, verifique o URL ou
               selecione uma trilha válida.
@@ -198,7 +200,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-100">
+    <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
       <Header
         slug={slug}
         availableQuestions={availableQuestions}
@@ -206,7 +208,10 @@ export default function Home() {
       />
       <main className="flex flex-1 flex-col gap-8 px-10 py-10 md:flex-row">
         <section className="flex flex-col space-y-4 md:w-1/2">
-          <div id="enunciado" className="rounded-lg bg-white p-4 shadow">
+          <div
+            id="enunciado"
+            className="rounded-lg p-4 shadow bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+          >
             <b>{'Questão ' + questionId + ') '}</b> {enunciado}
           </div>
           <CodeArea

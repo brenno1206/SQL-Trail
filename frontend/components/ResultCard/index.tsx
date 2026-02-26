@@ -10,8 +10,8 @@ interface ResultCardProps {
 export function ResultCard({ footer, placeholder, result }: ResultCardProps) {
   return (
     <main>
-      <div className="rounded-lg bg-white p-4 shadow">
-        <h2 className="mb-3 text-xl font-semibold text-gray-800">
+      <div className="rounded-lg p-4 shadow bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+        <h2 className="mb-3 text-xl font-semibold dark:text-gray-300 text-gray-700">
           {placeholder}
         </h2>
         <div
@@ -20,7 +20,7 @@ export function ResultCard({ footer, placeholder, result }: ResultCardProps) {
         >
           <Table data={result} />
         </div>
-        <div className="mt-2 text-sm text-gray-600" id="footerAluno">
+        <div className="mt-2 text-sm text-gray-500" id="footerAluno">
           {footer}
         </div>
       </div>
