@@ -4,11 +4,12 @@ import os
 import time
 import re
 import pandas as pd
-import requests
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class QuestionRepository:
     """Gerencia o carregamento e recuperação das questoes do arquivo JSON."""
-    def __init__(self, json_path="questoes.json"):
+    def __init__(self, json_path=os.path.join(BASE_DIR, "..", "questoes.json")):
         self.QUESTIONS = {}
         self._load_questions(json_path)
     
@@ -86,7 +87,7 @@ class SupabaseService:
                     data = json.loads(data)
                 except Exception as e:
                     print("Falhou em passar para JSON.")
-                    return {'data': None, 'error': 'Falhou em passar para JSON: {e}'}
+                    return {'data': None, 'error': f'Falhou em passar para JSON: {e}'}
             
             if not isinstance(data, list):
                 print("Formato inesperado.")
@@ -167,60 +168,3 @@ class SQLGrader:
             clean_str = re.sub(r'[^a-z0-9]', '', row_str.lower())
             fingerprints.append(clean_str)
         return sorted(fingerprints)
-    
-class GroqService:
-    """Gerencia a interacao com a API do Groq para validacao semantica."""
-    def __init__(self):
-        self.api_key = os.getenv('API_KEY')
-        self.model = os.getenv('GROQ_MODEL')
-        self.url = os.getenv('GROQ_URL')
-
-    def validate(self, enunciado: str, base_sql: str, student_sql: str) -> bool:
-        headers = {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json'
-        }
-
-        prompt_system = """
-        Você eh um avaliador de SQL de nivel especialista, com profundo entendimento de semantica e requisitos de negocio. 
-        Sua tarefa eh verificar se a consulta do aluno atende aos requisitos do enunciado...
-        (Prompt original abreviado para brevidade, mas mantido na lógica)
-        Responda estritamente com **True** se a consulta do aluno satisfaz os requisitos do enunciado ou **False** caso contrario.
-        """.strip()
-
-        prompt_user = f"""
-        Enunciado: {enunciado}
-        Consulta base: {base_sql}
-        Consulta do aluno: {student_sql}
-        Ambas as consultas acima retornam resultados que satisfazem corretamente o enunciado?
-        Responda apenas True ou False.
-        """.strip()
-
-        payload = {
-            'model': self.model,
-            'messages': [
-                {'role': 'system', 'content': prompt_system},
-                {'role': 'user', 'content': prompt_user}
-            ],
-            'temperature': 0.0,
-            'max_tokens': 4
-        }
-
-        try:
-            # print("--- DEBUG: Enviando para Groq API ---")
-            resp = requests.post(self.url, headers=headers, json=payload, timeout=30)
-            # print(f"--- DEBUG: Groq Status Code: {resp.status_code} ---")
-
-            #if resp.status_code != 200:
-            #    print(f"--- DEBUG: Erro na API Groq: {resp.text} ---")
-            
-            resp.raise_for_status()
-            data = resp.json()
-            text = data['choices'][0]['message']['content'].strip().lower()
-            # print(f"--- DEBUG: Resposta da IA (limpa): '{text}' ---")
-
-            return text.startswith('true')
-
-        except Exception as e:
-            print(f'Erro ao chamar Groq: {e}')
-            return False
