@@ -29,7 +29,7 @@ def validate():
 
     q_data = repo.get_question(slug, q_id)
     enunciado = q_data['enunciado']
-    student_sql = data.get('student_sql', '').strip()
+    student_sql = (data.get('student_sql') or '').strip()
 
     # 2. Validações da Consulta do Aluno
     if not student_sql:
