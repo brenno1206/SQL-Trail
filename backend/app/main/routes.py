@@ -35,7 +35,7 @@ def validate():
     if not student_sql:
         return jsonify({'valid': False, 'error': 'Sua Consulta está em branco.', 'enunciado': enunciado}), 400
     
-    if not grader.is_select(student_sql):
+    if not grader.is_safe_query(student_sql):
         return jsonify({'valid': False, 'error': 'Sua consulta não inicia com SELECT.', 'enunciado': enunciado}), 200
 
     # 3. Configuração do Supabase

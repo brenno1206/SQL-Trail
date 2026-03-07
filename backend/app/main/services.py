@@ -113,9 +113,25 @@ class SQLGrader:
     """Responsavel por analisar e comparar os resultados das queries."""
 
     @staticmethod
-    def is_select(query: str) -> bool:
-        return query.strip().lower().startswith('select')
+    def is_safe_query(query: str) -> bool:
+        query_upper = query.upper()
+        
+        if not (query.strip().lower().startswith('select') or query.strip().lower().startswith('with')):
+            return False, "Sua consulta deve iniciar com SELECT ou WITH."
+            
+        if ';' in query.strip().rstrip(';'):
+            return False, "Apenas uma instrução SQL é permitida por vez."
 
+        dangerous_keywords = [
+            r'\bDROP\b', r'\bDELETE\b', r'\bUPDATE\b', r'\bINSERT\b', 
+            r'\bALTER\b', r'\bTRUNCATE\b', r'\bGRANT\b', r'\bREVOKE\b', r'\bEXEC\b'
+        ]
+        for keyword in dangerous_keywords:
+            if re.search(keyword, query_upper):
+                return False, f"Uso de comando não permitido: {keyword.replace(r'\b', '')}"
+
+        return True, "Valid."
+    
     def compare(self, base_sql, student_sql, base_res, student_res):
         """Compara os DataFrames resultantes em 3 niveis: Exato, Ordenacao, Alfanumerico."""
         base_upper = " " + base_sql.upper().replace('\n', ' ') + " "
@@ -125,7 +141,10 @@ class SQLGrader:
 
         if not base_data or not stu_data:
             return False, "Erro. Uma das queries nao retornou dados validos."
-
+        
+        if base_data['total'] != stu_data['total']:
+            return False, f"O número de linhas retornadas difere. Esperado: {base_data['total']}, Recebido: {stu_data['total']}."
+        
         df_base = pd.DataFrame(base_data['rows'], columns=base_data['columns'])
         df_stu = pd.DataFrame(stu_data['rows'], columns=stu_data['columns'])
 
