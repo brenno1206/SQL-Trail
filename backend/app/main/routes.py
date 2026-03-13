@@ -44,11 +44,11 @@ def validate():
         return jsonify({'error': f'Credenciais para o slug {slug} não encontradas.'}), 404
 
     # 4. Execução das Queries
-    stu_res = db_service.execute_query(client, student_sql)
+    stu_res = db_service.execute_query(client, student_sql, max_rows=0)
     if stu_res.get('error'):
         return jsonify({'valid': False, 'error': stu_res['error'], 'enunciado': enunciado}), 200
         
-    base_res = db_service.execute_query(client, q_data['resposta_base'])
+    base_res = db_service.execute_query(client, q_data['resposta_base'], max_rows=0)
     if base_res.get('error'):
         return jsonify({'valid': False, 'error': f"Erro na base: {base_res['error']}", 'enunciado': enunciado}), 500
 

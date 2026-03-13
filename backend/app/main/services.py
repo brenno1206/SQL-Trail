@@ -128,7 +128,8 @@ class SQLGrader:
         ]
         for keyword in dangerous_keywords:
             if re.search(keyword, query_upper):
-                return False, f"Uso de comando não permitido: {keyword.replace(r'\b', '')}"
+                clean_keyword = keyword.replace(r'\b', '')
+                return False, f"Uso de comando não permitido: {clean_keyword}"
 
         return True, "Valid."
     
@@ -165,9 +166,32 @@ class SQLGrader:
                 return False, "Os dados estão corretos, mas a ordem está errada."
             return True, "Parabens! As consultas sao equivalentes."
 
-        # NÍVEL 3: Comparação Alfanumérica 
-        if self._get_alphanumeric_fingerprint(df_base_norm) == self._get_alphanumeric_fingerprint(df_stu_norm):
-            return True, "Parabens! As consultas sao equivalentes."
+        # NÍVEL 3: Busca Flexível (Aceita concatenação, colunas extras e ordenação diferente)
+        if len(df_base_norm) == len(df_stu_norm):
+            
+            stu_pool = []
+            for s_row in df_stu_norm.values.tolist():
+                s_string = re.sub(r'[^a-z0-9]', '', "".join(map(str, s_row)))
+                stu_pool.append(s_string)
+            
+            all_base_rows_found = True
+            
+            for b_row in df_base_norm.values.tolist():
+                b_vals = [re.sub(r'[^a-z0-9]', '', str(v)) for v in b_row]
+                
+                row_matched = False
+                for i, s_super_string in enumerate(stu_pool):
+                    if all(b_val in s_super_string for b_val in b_vals):
+                        row_matched = True
+                        stu_pool.pop(i)
+                        break
+                
+                if not row_matched:
+                    all_base_rows_found = False
+                    break
+            
+            if all_base_rows_found:
+                return True, "Parabens! As consultas sao equivalentes."
 
         return False, "Os dados nao conferem."
 
