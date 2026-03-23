@@ -2,6 +2,9 @@ from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
+from app.main import init_app as init_main
+from app.auth import init_app as init_auth
+
 
 def create_app():
     load_dotenv()
@@ -14,7 +17,7 @@ def create_app():
 
     CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"])
 
-    from .main import main as main_blueprint
-    app.register_blueprint(main_blueprint)
+    init_main(app)
+    init_auth(app)
     
     return app

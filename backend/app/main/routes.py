@@ -1,8 +1,7 @@
-from flask import request, jsonify
-from app.main import main
+from flask import request, jsonify, Blueprint
 from .services import QuestionRepository, SupabaseService, SQLGrader
 
-bp = main
+bp = Blueprint('main', __name__)
 
 repo = QuestionRepository()
 db_service = SupabaseService()

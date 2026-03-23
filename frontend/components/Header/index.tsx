@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { QuestionListItem } from '@/types/Response';
 import Link from 'next/link';
-import { IoIosArrowDropleftCircle } from '@/assets/icons';
+import { useAuth } from '@/contexts/AuthContext'; // 1. Importamos o contexto
 
 interface HeaderProps {
   slug?: string;
@@ -17,8 +16,12 @@ export default function Header({
   availableQuestions,
   onQuestionSelect,
 }: HeaderProps) {
+  // 2. Puxamos os dados de autenticação
+  const { user, logout, isAuthenticated } = useAuth();
+
   const [isErdModalOpen, setIsErdModalOpen] = useState(false);
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // 3. Estado do menu lateral
 
   const showActionButtons = availableQuestions && availableQuestions.length > 0;
 
@@ -29,49 +32,66 @@ export default function Header({
     'absolute -top-3 -right-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-3xl font-light text-gray-600 shadow-lg transition-all duration-200 ease-in-out hover:rotate-90 hover:bg-red-50 hover:text-red-600';
 
   return (
-    <header
-      className={
-        'flex h-20 shrink-0 items-center bg-blue-900 px-10 py-4 text-white shadow-md' +
-        (showActionButtons ? 'justify-between' : 'justify-center')
-      }
-    >
-      <div className="flex flex-1 items-center justify-start gap-4">
-        {/* {slug && (
-          <Link
-            href={'/'}
-            className="p-2 text-4xl hover:transition-all hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50"
-          >
-            <IoIosArrowDropleftCircle className="hover:text-blue-50 " />
-          </Link>
-        )} */}
-        {showActionButtons && (
+    <>
+      <header
+        className={
+          'flex h-20 shrink-0 items-center bg-blue-900 px-10 py-4 text-white shadow-md ' +
+          (showActionButtons ? 'justify-between' : 'justify-center')
+        }
+      >
+        <div className="flex flex-1 items-center justify-start gap-4">
+          {showActionButtons && (
+            <button
+              id="btnNext"
+              onClick={() => setIsQuestionModalOpen(true)}
+              className={baseButtonStyles}
+            >
+              Selecionar Questão
+            </button>
+          )}
+        </div>
+
+        <Link href="/" className="flex flex-1 items-center justify-center">
+          <h1 className="capitalize text-2xl font-bold">
+            SQL Trail {slug ? '- ' + slug.replace(/-/g, ' ') : ''}
+          </h1>
+        </Link>
+
+        {/* 4. Ajustamos a div da direita para ter um gap entre o botão de mapa e o menu */}
+        <div className="flex flex-1 items-center justify-end gap-4">
+          {showActionButtons && (
+            <button
+              onClick={() => setIsErdModalOpen(true)}
+              className={baseButtonStyles}
+            >
+              Ver Mapa Conceitual
+            </button>
+          )}
+
+          {/* Botão para abrir o Menu Lateral */}
           <button
-            id="btnNext"
-            onClick={() => setIsQuestionModalOpen(true)}
-            className={baseButtonStyles}
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 text-white hover:bg-blue-800 rounded-lg transition-colors focus:outline-none"
+            aria-label="Abrir menu"
           >
-            Selecionar Questão
+            <svg
+              className="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
           </button>
-        )}
-      </div>
+        </div>
+      </header>
 
-      <Link href="/" className="flex flex-1 items-center justify-center">
-        <h1 className="capitalize text-2xl font-bold">
-          SQL Trail {slug ? '- ' + slug.replace(/-/g, ' ') : ''}
-        </h1>
-      </Link>
-
-      <div className="flex flex-1 items-center justify-end">
-        {showActionButtons && (
-          <button
-            onClick={() => setIsErdModalOpen(true)}
-            className={baseButtonStyles}
-          >
-            Ver Mapa Conceitual
-          </button>
-        )}
-      </div>
-
+      {/* MODAIS ORIGINAIS MANTIDOS IGUAIS */}
       {isErdModalOpen && (
         <div
           id="erdModal"
@@ -137,6 +157,116 @@ export default function Header({
           </div>
         </div>
       )}
-    </header>
+
+      {/* 5. NOVO: MENU LATERAL (SIDEBAR) */}
+      {/* Fundo escuro do menu */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Gaveta do menu */}
+      <div
+        className={`fixed top-0 right-0 z-50 h-screen w-72 bg-white shadow-2xl transition-transform duration-300 ease-in-out transform flex flex-col ${
+          isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800">Menu</h2>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-5 flex flex-col gap-6 flex-1">
+          {/* Cartão do Usuário Logado */}
+          {isAuthenticated && user ? (
+            <div className="flex flex-col gap-1 p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <span className="text-xs text-blue-600/80 font-medium uppercase tracking-wider">
+                Conta
+              </span>
+              <span className="font-bold text-blue-950 text-lg truncate">
+                {user.name}
+              </span>
+              <span className="text-xs font-bold px-2.5 py-1 bg-blue-600 text-white rounded w-fit capitalize mt-1">
+                {user.role}
+              </span>
+            </div>
+          ) : (
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <span className="text-sm text-gray-600">
+                Nenhum usuário logado.
+              </span>
+            </div>
+          )}
+
+          {/* Links de Navegação */}
+          <nav className="flex flex-col gap-2">
+            <Link
+              href="/"
+              onClick={() => setIsSidebarOpen(false)}
+              className="px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition-colors font-semibold"
+            >
+              Início
+            </Link>
+
+            {!isAuthenticated && (
+              <Link
+                href="/login"
+                onClick={() => setIsSidebarOpen(false)}
+                className="px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition-colors font-semibold"
+              >
+                Fazer Login
+              </Link>
+            )}
+          </nav>
+        </div>
+
+        {/* Rodapé (Botão de Logout) */}
+        {isAuthenticated && (
+          <div className="p-5 border-t border-gray-100">
+            <button
+              onClick={() => {
+                logout();
+                setIsSidebarOpen(false);
+              }}
+              className="w-full py-3.5 flex items-center justify-center gap-2 text-red-600 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200 active:scale-95"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              Sair da Conta
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { api } from '@/lib/api';
 import { Footer } from '@/components/Footer';
 import { TableDataWithTotal } from '@/types/Table';
 import { ValidateResponse, QuestionListItem } from '@/types/Response';
@@ -11,6 +11,7 @@ import { ResultCard } from '@/components/ResultCard';
 import { MessageStatus } from '@/components/MessageStatus';
 import { useParams } from 'next/navigation';
 import { databases } from '@/types/databases';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 const slugs = databases.map((db) => db.slug);
 
@@ -83,10 +84,9 @@ export default function Home() {
       setLoadedSlug(slug);
 
       try {
-        const res = await axios.get<QuestionListItem[]>(
-          `${API_URL}/questions`,
-          { params: { slug } },
-        );
+        const res = await api.get<QuestionListItem[]>(`${API_URL}/questions`, {
+          params: { slug },
+        });
 
         const questions = res.data;
         if (questions && questions.length > 0) {
@@ -108,9 +108,7 @@ export default function Home() {
         }
       } catch (err: unknown) {
         let errorMessage = 'Erro ao carregar lista de questões.';
-        if (axios.isAxiosError(err)) {
-          errorMessage = err.response?.data?.error || err.message;
-        } else if (err instanceof Error) {
+        if (err instanceof Error) {
           errorMessage = err.message;
         }
         setMessage(errorMessage);
@@ -141,7 +139,7 @@ export default function Home() {
     };
 
     try {
-      const res = await axios.post<ValidateResponse>(
+      const res = await api.post<ValidateResponse>(
         `${API_URL}/validate`,
         payload,
       );
@@ -163,9 +161,7 @@ export default function Home() {
       }
     } catch (err: unknown) {
       let errorMessage = 'Erro desconhecido ao realizar validação.';
-      if (axios.isAxiosError(err)) {
-        errorMessage = err.response?.data?.error || err.message;
-      } else if (err instanceof Error) {
+      if (err instanceof Error) {
         errorMessage = err.message;
       }
       setMessage(errorMessage);
@@ -181,63 +177,67 @@ export default function Home() {
 
   if (!slug || !slugs.includes(slug)) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-50 text-gray-800">
-        <Header slug={slug} />
-        <main className="flex flex-1 items-center justify-center">
-          <div className="m-10 rounded-lg bg-white dark:bg-gray-800 p-20 shadow">
-            <h1 className="mb-4 text-2xl font-bold dark:text-gray-50 text-gray-800">
-              Trilha não encontrada
-            </h1>
-            <p>
-              A trilha solicitada não existe. Por favor, verifique o URL ou
-              selecione uma trilha válida.
-            </p>
-          </div>
-        </main>
-        <Footer />
-      </div>
+      <ProtectedRoute>
+        <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-50 text-gray-800">
+          <Header slug={slug} />
+          <main className="flex flex-1 items-center justify-center">
+            <div className="m-10 rounded-lg bg-white dark:bg-gray-800 p-20 shadow">
+              <h1 className="mb-4 text-2xl font-bold dark:text-gray-50 text-gray-800">
+                Trilha não encontrada
+              </h1>
+              <p>
+                A trilha solicitada não existe. Por favor, verifique o URL ou
+                selecione uma trilha válida.
+              </p>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      </ProtectedRoute>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
-      <Header
-        slug={slug}
-        availableQuestions={availableQuestions}
-        onQuestionSelect={handleQuestionSelect}
-      />
-      <main className="flex flex-1 flex-col gap-8 px-10 py-10 md:flex-row">
-        <section className="flex flex-col space-y-4 md:w-1/2">
-          <div
-            id="enunciado"
-            className="rounded-lg p-4 shadow bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100"
-          >
-            <b>{'Questão ' + questionId + ') '}</b> {enunciado}
-          </div>
-          <CodeArea
-            onEditorChange={onEditorChange}
-            validarConsulta={validarConsulta}
-            sqlQuery={sqlQuery}
-          />
-        </section>
+    <ProtectedRoute>
+      <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+        <Header
+          slug={slug}
+          availableQuestions={availableQuestions}
+          onQuestionSelect={handleQuestionSelect}
+        />
+        <main className="flex flex-1 flex-col gap-8 px-10 py-10 md:flex-row">
+          <section className="flex flex-col space-y-4 md:w-1/2">
+            <div
+              id="enunciado"
+              className="rounded-lg p-4 shadow bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+            >
+              <b>{'Questão ' + questionId + ') '}</b> {enunciado}
+            </div>
+            <CodeArea
+              onEditorChange={onEditorChange}
+              validarConsulta={validarConsulta}
+              sqlQuery={sqlQuery}
+            />
+          </section>
 
-        <section className="flex flex-col space-y-6 md:w-1/2">
-          <MessageStatus isLoading={isLoading} message={message} />
+          <section className="flex flex-col space-y-6 md:w-1/2">
+            <MessageStatus isLoading={isLoading} message={message} />
 
-          <ResultCard
-            footer={alunoFooter}
-            placeholder={'Resultado do Aluno'}
-            result={alunoResult}
-          />
-          <ResultCard
-            footer={baseFooter}
-            placeholder={'Resultado Esperado'}
-            result={baseResult}
-          />
-        </section>
-      </main>
+            <ResultCard
+              footer={alunoFooter}
+              placeholder={'Resultado do Aluno'}
+              result={alunoResult}
+            />
+            <ResultCard
+              footer={baseFooter}
+              placeholder={'Resultado Esperado'}
+              result={baseResult}
+            />
+          </section>
+        </main>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </ProtectedRoute>
   );
 }

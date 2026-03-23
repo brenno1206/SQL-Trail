@@ -1,5 +1,4 @@
-from flask import Blueprint
+from app.main.routes import bp
 
-main = Blueprint('main', __name__)
-
-from . import routes #noqa
+def init_app(app):
+    app.register_blueprint(bp)
