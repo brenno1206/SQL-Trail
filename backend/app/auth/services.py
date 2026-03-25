@@ -4,6 +4,8 @@ from app.database.models import Admin, Teacher, Student
 
 class AuthService:
     
+    # admin services
+
     @staticmethod
     def create_admin(data):
         with Session() as session:
@@ -17,7 +19,51 @@ class AuthService:
             )
             session.add(new_admin)
             session.commit()
-            return True, {"msg": "Admin criado com sucesso!"}
+            session.expunge(new_admin)
+            return True, {"msg": "Admin criado com sucesso!", "admin": new_admin}
+
+    @staticmethod
+    def get_admin(admin_id):
+        with Session() as session:
+            admin = session.query(Admin).filter_by(id=admin_id).first()
+            if admin:
+                session.expunge(admin)
+                return True, admin
+            return False, {"error": "Admin não encontrado"}
+
+    @staticmethod
+    def update_admin(admin_id, data):
+        with Session() as session:
+            admin = session.query(Admin).filter_by(id=admin_id).first()
+            if not admin:
+                return False, {"error": "Admin não encontrado"}
+
+            if 'name' in data:
+                admin.name = data['name']
+            
+            if 'email' in data:
+                existing = session.query(Admin).filter(Admin.email == data['email'], Admin.id != admin_id).first()
+                if existing:
+                    return False, {"error": "Email já está em uso por outro Admin"}
+                admin.email = data['email']
+                
+            if 'password' in data:
+                admin.password_hash = generate_password_hash(data['password'])
+
+            session.commit()
+            session.expunge(admin)
+            return True, {"msg": "Admin atualizado com sucesso!", "admin": admin}
+
+    @staticmethod
+    def delete_admin(admin_id):
+        with Session() as session:
+            admin = session.query(Admin).filter_by(id=admin_id).first()
+            if not admin:
+                return False, {"error": "Admin não encontrado"}
+            
+            session.delete(admin)
+            session.commit()
+            return True, {"msg": "Admin deletado com sucesso!"}
 
     @staticmethod
     def create_teacher(data):
@@ -36,7 +82,60 @@ class AuthService:
             )
             session.add(new_teacher)
             session.commit()
-            return True, {"msg": "Professor criado com sucesso!"}
+            session.expunge(new_teacher)
+            return True, {"msg": "Professor criado com sucesso!", "teacher": new_teacher}
+
+    @staticmethod
+    def get_teacher(teacher_id):
+        with Session() as session:
+            teacher = session.query(Teacher).filter_by(id=teacher_id).first()
+            if teacher:
+                session.expunge(teacher)
+                return True, teacher
+            return False, {"error": "Professor não encontrado"}
+
+    @staticmethod
+    def update_teacher(teacher_id, data):
+        with Session() as session:
+            teacher = session.query(Teacher).filter_by(id=teacher_id).first()
+            if not teacher:
+                return False, {"error": "Professor não encontrado"}
+
+            if 'name' in data:
+                teacher.name = data['name']
+            
+            if 'email' in data:
+                existing = session.query(Teacher).filter(Teacher.email == data['email'], Teacher.id != teacher_id).first()
+                if existing:
+                    return False, {"error": "Email já está em uso por outro Professor"}
+                teacher.email = data['email']
+
+            if 'registration_number' in data:
+                existing = session.query(Teacher).filter(Teacher.registration_number == data['registration_number'], Teacher.id != teacher_id).first()
+                if existing:
+                    return False, {"error": "Matrícula já está em uso por outro Professor"}
+                teacher.registration_number = data['registration_number']
+
+            if 'password' in data:
+                teacher.password_hash = generate_password_hash(data['password'])
+
+            session.commit()
+            session.expunge(teacher)
+            return True, {"msg": "Professor atualizado com sucesso!", "teacher": teacher}
+
+    @staticmethod
+    def delete_teacher(teacher_id):
+        with Session() as session:
+            teacher = session.query(Teacher).filter_by(id=teacher_id).first()
+            if not teacher:
+                return False, {"error": "Professor não encontrado"}
+            
+            session.delete(teacher)
+            session.commit()
+            return True, {"msg": "Professor deletado com sucesso!"}
+
+    
+    # student services
 
     @staticmethod
     def create_student(data):
@@ -50,7 +149,53 @@ class AuthService:
             )
             session.add(new_student)
             session.commit()
-            return True, {"msg": "Aluno registrado. Necessário definir senha no primeiro acesso."}
+            session.expunge(new_student)
+            return True, {"msg": "Aluno registrado. Necessário definir senha no primeiro acesso.", "student": new_student}
+
+    @staticmethod
+    def get_student(student_id):
+        with Session() as session:
+            student = session.query(Student).filter_by(id=student_id).first()
+            if student:
+                session.expunge(student)
+                return True, student
+            return False, {"error": "Aluno não encontrado"}
+
+    @staticmethod
+    def update_student(student_id, data):
+        with Session() as session:
+            student = session.query(Student).filter_by(id=student_id).first()
+            if not student:
+                return False, {"error": "Aluno não encontrado"}
+
+            if 'name' in data:
+                student.name = data['name']
+
+            if 'registration_number' in data:
+                existing = session.query(Student).filter(Student.registration_number == data['registration_number'], Student.id != student_id).first()
+                if existing:
+                    return False, {"error": "Matrícula já está em uso por outro Aluno"}
+                student.registration_number = data['registration_number']
+
+            if 'password' in data:
+                student.password_hash = generate_password_hash(data['password'])
+
+            session.commit()
+            session.expunge(student)
+            return True, {"msg": "Aluno atualizado com sucesso!", "student": student}
+
+    @staticmethod
+    def delete_student(student_id):
+        with Session() as session:
+            student = session.query(Student).filter_by(id=student_id).first()
+            if not student:
+                return False, {"error": "Aluno não encontrado"}
+            
+            session.delete(student)
+            session.commit()
+            return True, {"msg": "Aluno deletado com sucesso!"}
+
+    # auth services
 
     @staticmethod
     def setup_student_first_access(registration, new_password):
@@ -64,7 +209,8 @@ class AuthService:
 
             student.password_hash = generate_password_hash(new_password)
             session.commit()
-            return True, {"msg": "Senha definida com sucesso! Você já pode fazer login."}
+            session.expunge(student)
+            return True, {"msg": "Senha definida com sucesso! Você já pode fazer login.", "student": student}
 
     @staticmethod
     def authenticate_user(login_id, password, role):

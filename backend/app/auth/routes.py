@@ -6,7 +6,21 @@ from app.auth.decorators import role_required
 
 auth_bp = Blueprint('auth', __name__)
 
-@auth_bp.route('/register/admin', methods=['POST'])
+# Função Auxiliar 
+def serialize_user(user):
+    """Converte a instância do banco de dados em um dicionário seguro para JSON."""
+    if not user:
+        return None
+    data = {"id": user.id, "name": user.name}
+    if hasattr(user, 'email'):
+        data['email'] = user.email
+    if hasattr(user, 'registration_number'):
+        data['registration_number'] = user.registration_number
+    return data
+
+# admin routes
+
+@auth_bp.route('/admin', methods=['POST'])
 @role_required('admin')
 def register_admin():
     data = request.get_json()
@@ -14,10 +28,41 @@ def register_admin():
 
     if not success:
         return jsonify(response), 400
+    
+    response['admin'] = serialize_user(response.pop('admin', None))
     return jsonify(response), 201
 
+@auth_bp.route('/admin/<int:admin_id>', methods=['GET'])
+@role_required('admin')
+def get_admin(admin_id):
+    success, result = AuthService.get_admin(admin_id)
+    if not success:
+        return jsonify(result), 404
+    return jsonify({"admin": serialize_user(result)}), 200
 
-@auth_bp.route('/register/teacher', methods=['POST'])
+@auth_bp.route('/admin/<int:admin_id>', methods=['PUT'])
+@role_required('admin')
+def update_admin(admin_id):
+    data = request.get_json()
+    success, response = AuthService.update_admin(admin_id, data)
+    if not success:
+        return jsonify(response), 400
+    
+    response['admin'] = serialize_user(response.pop('admin', None))
+    return jsonify(response), 200
+
+@auth_bp.route('/admin/<int:admin_id>', methods=['DELETE'])
+@role_required('admin')
+def delete_admin(admin_id):
+    success, response = AuthService.delete_admin(admin_id)
+    if not success:
+        return jsonify(response), 404
+    return jsonify(response), 200
+
+
+# teacher routes
+
+@auth_bp.route('/teacher', methods=['POST'])
 @role_required('admin')
 def register_teacher():
     data = request.get_json()
@@ -25,10 +70,41 @@ def register_teacher():
 
     if not success:
         return jsonify(response), 400
+    
+    response['teacher'] = serialize_user(response.pop('teacher', None))
     return jsonify(response), 201
 
+@auth_bp.route('/teacher/<int:teacher_id>', methods=['GET'])
+@role_required('admin', 'teacher')
+def get_teacher(teacher_id):
+    success, result = AuthService.get_teacher(teacher_id)
+    if not success:
+        return jsonify(result), 404
+    return jsonify({"teacher": serialize_user(result)}), 200
 
-@auth_bp.route('/register/student', methods=['POST'])
+@auth_bp.route('/teacher/<int:teacher_id>', methods=['PUT'])
+@role_required('admin')
+def update_teacher(teacher_id):
+    data = request.get_json()
+    success, response = AuthService.update_teacher(teacher_id, data)
+    if not success:
+        return jsonify(response), 400
+    
+    response['teacher'] = serialize_user(response.pop('teacher', None))
+    return jsonify(response), 200
+
+@auth_bp.route('/teacher/<int:teacher_id>', methods=['DELETE'])
+@role_required('admin')
+def delete_teacher(teacher_id):
+    success, response = AuthService.delete_teacher(teacher_id)
+    if not success:
+        return jsonify(response), 404
+    return jsonify(response), 200
+
+
+# student routes
+
+@auth_bp.route('/student', methods=['POST'])
 @role_required('admin', 'teacher')
 def register_student():
     data = request.get_json()
@@ -36,8 +112,39 @@ def register_student():
     
     if not success:
         return jsonify(response), 400
+    
+    response['student'] = serialize_user(response.pop('student', None))
     return jsonify(response), 201
 
+@auth_bp.route('/student/<int:student_id>', methods=['GET'])
+@role_required('admin', 'teacher', 'student')
+def get_student(student_id):
+    success, result = AuthService.get_student(student_id)
+    if not success:
+        return jsonify(result), 404
+    return jsonify({"student": serialize_user(result)}), 200
+
+@auth_bp.route('/student/<int:student_id>', methods=['PUT'])
+@role_required('admin', 'teacher')
+def update_student(student_id):
+    data = request.get_json()
+    success, response = AuthService.update_student(student_id, data)
+    if not success:
+        return jsonify(response), 400
+    
+    response['student'] = serialize_user(response.pop('student', None))
+    return jsonify(response), 200
+
+@auth_bp.route('/student/<int:student_id>', methods=['DELETE'])
+@role_required('admin', 'teacher')
+def delete_student(student_id):
+    success, response = AuthService.delete_student(student_id)
+    if not success:
+        return jsonify(response), 404
+    return jsonify(response), 200
+
+
+# auth routes
 
 @auth_bp.route('/student/first-access', methods=['POST'])
 def student_first_access():
@@ -53,7 +160,8 @@ def student_first_access():
     if not success:
         status_code = 404 if "não encontrado" in response.get("error", "") else 400
         return jsonify(response), status_code
-        
+    
+    response['student'] = serialize_user(response.pop('student', None))    
     return jsonify(response), 200
 
 
@@ -81,4 +189,4 @@ def login():
         }
     )
     
-    return jsonify(access_token=access_token, name=result['name']), 200
+    return jsonify(access_token=access_token, name=result['name']), 200 
