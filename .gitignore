@@ -10,6 +10,7 @@ Thumbs.db
 venv/
 *.pyc
 __pycache__/
+backend/sql_trail.egg-info
 
 # --- Frontend (Node.js / React / Next) ---
 # Dependências

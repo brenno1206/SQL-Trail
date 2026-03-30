@@ -1,21 +1,16 @@
 from flask import Flask
-from flask_cors import CORS
-from dotenv import load_dotenv
-import os
-from app.main import init_app as init_main
-from app.auth import init_app as init_auth
 
 def create_app():
-    load_dotenv()
 
     app = Flask(__name__)
 
-    config_class = os.getenv('APP_SETTINGS', 'config.DevelopmentConfig')
-    app.config.from_object(config_class)
+    from app.config import init_app as init_config
+    init_config(app)
 
-    CORS(app, origins=app.config.get('CORS_ORIGINS'))
-
+    from app.main import init_app as init_main
     init_main(app)
+
+    from app.auth import init_app as init_auth
     init_auth(app)
     
     return app
