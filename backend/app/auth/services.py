@@ -4,7 +4,7 @@ from app.database.models import Admin, Teacher, Student
 
 class AuthService:
     
-    # admin services
+    # --- ADMIN SERVICES ---
 
     @staticmethod
     def create_admin(data):
@@ -19,6 +19,7 @@ class AuthService:
             )
             session.add(new_admin)
             session.commit()
+            session.refresh(new_admin)
             session.expunge(new_admin)
             return True, {"msg": "Admin criado com sucesso!", "admin": new_admin}
 
@@ -51,6 +52,7 @@ class AuthService:
                 admin.password_hash = generate_password_hash(data['password'])
 
             session.commit()
+            session.refresh(admin)
             session.expunge(admin)
             return True, {"msg": "Admin atualizado com sucesso!", "admin": admin}
 
@@ -64,6 +66,9 @@ class AuthService:
             session.delete(admin)
             session.commit()
             return True, {"msg": "Admin deletado com sucesso!"}
+
+    
+    # --- TEACHER SERVICES ---
 
     @staticmethod
     def create_teacher(data):
@@ -82,6 +87,7 @@ class AuthService:
             )
             session.add(new_teacher)
             session.commit()
+            session.refresh(new_teacher)
             session.expunge(new_teacher)
             return True, {"msg": "Professor criado com sucesso!", "teacher": new_teacher}
 
@@ -120,6 +126,7 @@ class AuthService:
                 teacher.password_hash = generate_password_hash(data['password'])
 
             session.commit()
+            session.refresh(teacher)
             session.expunge(teacher)
             return True, {"msg": "Professor atualizado com sucesso!", "teacher": teacher}
 
@@ -135,7 +142,7 @@ class AuthService:
             return True, {"msg": "Professor deletado com sucesso!"}
 
     
-    # student services
+    # --- STUDENT SERVICES ---
 
     @staticmethod
     def create_student(data):
@@ -149,13 +156,25 @@ class AuthService:
             )
             session.add(new_student)
             session.commit()
+            session.refresh(new_student)
             session.expunge(new_student)
             return True, {"msg": "Aluno registrado. Necessário definir senha no primeiro acesso.", "student": new_student}
 
     @staticmethod
     def get_student(student_id):
+        """Busca aluno pelo ID primário."""
         with Session() as session:
             student = session.query(Student).filter_by(id=student_id).first()
+            if student:
+                session.expunge(student)
+                return True, student
+            return False, {"error": "Aluno não encontrado"}
+            
+    @staticmethod
+    def get_student_by_registration(registration_number):
+        """Busca aluno pela matrícula (útil para matrículas em lote/CSV)."""
+        with Session() as session:
+            student = session.query(Student).filter_by(registration_number=str(registration_number)).first()
             if student:
                 session.expunge(student)
                 return True, student
@@ -181,6 +200,7 @@ class AuthService:
                 student.password_hash = generate_password_hash(data['password'])
 
             session.commit()
+            session.refresh(student)
             session.expunge(student)
             return True, {"msg": "Aluno atualizado com sucesso!", "student": student}
 
@@ -195,7 +215,8 @@ class AuthService:
             session.commit()
             return True, {"msg": "Aluno deletado com sucesso!"}
 
-    # auth services
+
+    # --- AUTHENTICATION SERVICES ---
 
     @staticmethod
     def setup_student_first_access(registration, new_password):
@@ -204,11 +225,12 @@ class AuthService:
             
             if not student:
                 return False, {"error": "Aluno não encontrado"}
-            if student.password_hash is not None:
+            if student.password_hash: # Alterado de "is not None" para lidar com strings vazias acidentais
                 return False, {"error": "O primeiro acesso já foi realizado"}
 
             student.password_hash = generate_password_hash(new_password)
             session.commit()
+            session.refresh(student)
             session.expunge(student)
             return True, {"msg": "Senha definida com sucesso! Você já pode fazer login.", "student": student}
 
@@ -229,8 +251,12 @@ class AuthService:
             if not user:
                 return False, {"error": "Usuário não encontrado"}
             
-            if role == 'student' and not user.password_hash:
-                return False, {"error": "Realize o primeiro acesso para cadastrar sua senha"}
+            # Garante que o usuário tem uma senha cadastrada no banco antes de verificar
+            if not user.password_hash:
+                if role == 'student':
+                    return False, {"error": "Realize o primeiro acesso para cadastrar sua senha"}
+                else:
+                    return False, {"error": "Conta inválida: Usuário não possui senha cadastrada."}
 
             if not check_password_hash(user.password_hash, password):
                 return False, {"error": "Credenciais inválidas"}
