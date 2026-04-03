@@ -214,6 +214,18 @@ class AuthService:
             session.rollback()
             return False, {"error": f"Erro ao deletar professor: {str(e)}"}
 
+    @staticmethod
+    def get_all_teachers():
+        """
+        Retorna todos os professores cadastrados no sistema.
+        """
+        try:
+            with Session() as session:
+                teachers = session.query(Teacher).all()
+                session.expunge_all()
+                return True, teachers
+        except SQLAlchemyError as e:
+            return False, {"error": f"Erro ao buscar professores: {str(e)}"}
     
     # --- STUDENT SERVICES ---
 
@@ -327,6 +339,18 @@ class AuthService:
             session.rollback()
             return False, {"error": f"Erro ao deletar aluno: {str(e)}"}
 
+    @staticmethod
+    def get_all_students():
+        """
+        Retorna todos os alunos cadastrados no sistema.
+        """
+        try:
+            with Session() as session:
+                students = session.query(Student).all()
+                session.expunge_all()
+                return True, students
+        except SQLAlchemyError as e:
+            return False, {"error": f"Erro ao buscar alunos: {str(e)}"}
 
     # --- AUTHENTICATION SERVICES ---
 

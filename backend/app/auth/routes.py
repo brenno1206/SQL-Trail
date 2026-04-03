@@ -143,6 +143,33 @@ def delete_student(student_id):
         return jsonify(response), 404
     return jsonify(response), 200
 
+@auth_bp.route('/teachers', methods=['GET'])
+@role_required('admin')
+def get_all_teachers():
+    """
+    Rota para listar todos os professores cadastrados.
+    Acesso restrito a administradores.
+    """
+    success, result = AuthService.get_all_teachers()
+    
+    if success:
+        return jsonify([serialize_user(teacher) for teacher in result]), 200
+        
+    return jsonify(result), 500
+
+@auth_bp.route('/students', methods=['GET'])
+@role_required('admin', 'teacher')
+def get_all_students():
+    """
+    Rota para listar todos os alunos cadastrados.
+    Acesso permitido para administradores e professores.
+    """
+    success, result = AuthService.get_all_students()
+    
+    if success:
+        return jsonify([serialize_user(student) for student in result]), 200
+        
+    return jsonify(result), 500
 
 # auth routes
 
