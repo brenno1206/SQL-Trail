@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Footer } from '@/components/Footer';
+import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function LoginPage() {
   const { login, firstAccess, isAuthenticated, isLoading } = useAuth();
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const [role, setRole] = useState('student');
   const [isFirstAccess, setIsFirstAccess] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -31,6 +33,8 @@ export default function LoginPage() {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       if (role === 'student' && isFirstAccess) {
         await firstAccess(loginId, password);
@@ -42,6 +46,8 @@ export default function LoginPage() {
       const mensagemBackend =
         err.response?.data?.error || err.response?.data?.message;
       setError(mensagemBackend || 'Erro na conexão ou credenciais inválidas.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -87,8 +93,9 @@ export default function LoginPage() {
                 <button
                   key={r.id}
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => handleRoleChange(r.id)}
-                  className={`pb-3 px-2 text-sm md:text-base font-semibold transition-all duration-300 outline-none
+                  className={`pb-3 px-2 text-sm md:text-base font-semibold transition-all duration-300 outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50
                     ${
                       role === r.id
                         ? 'text-blue-700 dark:text-blue-500 border-b-2 border-blue-700 dark:border-blue-500'
@@ -108,7 +115,8 @@ export default function LoginPage() {
                   placeholder={role === 'admin' ? 'Email' : 'Matrícula'}
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
-                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  disabled={isSubmitting}
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   required
                 />
               </div>
@@ -119,7 +127,8 @@ export default function LoginPage() {
                   placeholder={isFirstAccess ? 'Crie uma nova senha' : 'Senha'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  disabled={isSubmitting}
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   required
                 />
               </div>
@@ -131,11 +140,12 @@ export default function LoginPage() {
                     id="first-access"
                     checked={isFirstAccess}
                     onChange={(e) => setIsFirstAccess(e.target.checked)}
-                    className="mr-2 rounded text-blue-600 focus:ring-blue-500"
+                    disabled={isSubmitting}
+                    className="mr-2 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                   />
                   <label
                     htmlFor="first-access"
-                    className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer"
+                    className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     Este é meu primeiro acesso
                   </label>
@@ -144,9 +154,15 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white font-semibold text-lg p-3 rounded-lg hover:bg-blue-700 hover:shadow-md transition-all duration-300 mt-4"
+                disabled={isSubmitting}
+                className="w-full bg-blue-600 text-white font-semibold text-lg p-3 rounded-lg hover:bg-blue-700 hover:shadow-md transition-all duration-300 mt-4 cursor-pointer flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {isFirstAccess ? 'Cadastrar e Entrar' : 'Entrar'}
+                {isSubmitting && <LoadingSpinner />}
+                {isSubmitting
+                  ? 'Entrando...'
+                  : isFirstAccess
+                    ? 'Cadastrar e Entrar'
+                    : 'Entrar'}
               </button>
             </div>
           </form>

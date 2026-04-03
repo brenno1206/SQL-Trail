@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { QuestionListItem } from '@/types/Response';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext'; // 1. Importamos o contexto
+import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderProps {
   slug?: string;
@@ -16,17 +16,16 @@ export default function Header({
   availableQuestions,
   onQuestionSelect,
 }: HeaderProps) {
-  // 2. Puxamos os dados de autenticação
   const { user, logout, isAuthenticated } = useAuth();
 
   const [isErdModalOpen, setIsErdModalOpen] = useState(false);
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // 3. Estado do menu lateral
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const showActionButtons = availableQuestions && availableQuestions.length > 0;
 
   const baseButtonStyles =
-    'rounded-lg bg-white px-5 py-2.5 font-semibold cursor-pointer text-blue-900 shadow-md transition-all duration-200 ease-in-out hover:bg-blue-50 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50';
+    'rounded-lg bg-white px-5 py-2.5 font-semibold cursor-pointer text-blue-900 shadow-md transition-all duration-200 ease-in-out hover:bg-blue-50 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50 cursor-pointer';
 
   const modalCloseButtonStyles =
     'absolute -top-3 -right-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-3xl font-light text-gray-600 shadow-lg transition-all duration-200 ease-in-out hover:rotate-90 hover:bg-red-50 hover:text-red-600';
@@ -52,12 +51,11 @@ export default function Header({
         </div>
 
         <Link href="/" className="flex flex-1 items-center justify-center">
-          <h1 className="capitalize text-2xl font-bold">
+          <h1 className="capitalize text-2xl font-bold cursor-pointer">
             SQL Trail {slug ? '- ' + slug.replace(/-/g, ' ') : ''}
           </h1>
         </Link>
 
-        {/* 4. Ajustamos a div da direita para ter um gap entre o botão de mapa e o menu */}
         <div className="flex flex-1 items-center justify-end gap-4">
           {showActionButtons && (
             <button
@@ -68,10 +66,9 @@ export default function Header({
             </button>
           )}
 
-          {/* Botão para abrir o Menu Lateral */}
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 text-white hover:bg-blue-800 rounded-lg transition-colors focus:outline-none"
+            className="p-2 text-white hover:bg-blue-800 rounded-lg transition-colors focus:outline-none cursor-pointer"
             aria-label="Abrir menu"
           >
             <svg
@@ -91,7 +88,6 @@ export default function Header({
         </div>
       </header>
 
-      {/* MODAIS ORIGINAIS MANTIDOS IGUAIS */}
       {isErdModalOpen && (
         <div
           id="erdModal"
@@ -158,8 +154,7 @@ export default function Header({
         </div>
       )}
 
-      {/* 5. NOVO: MENU LATERAL (SIDEBAR) */}
-      {/* Fundo escuro do menu */}
+      {/* COMPONENTIZAR */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 transition-opacity"
@@ -167,7 +162,6 @@ export default function Header({
         />
       )}
 
-      {/* Gaveta do menu */}
       <div
         className={`fixed top-0 right-0 z-50 h-screen w-72 bg-white shadow-2xl transition-transform duration-300 ease-in-out transform flex flex-col ${
           isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
@@ -196,7 +190,6 @@ export default function Header({
         </div>
 
         <div className="p-5 flex flex-col gap-6 flex-1">
-          {/* Cartão do Usuário Logado */}
           {isAuthenticated && user ? (
             <div className="flex flex-col gap-1 p-4 bg-blue-50 rounded-xl border border-blue-100">
               <span className="text-xs text-blue-600/80 font-medium uppercase tracking-wider">
@@ -217,7 +210,6 @@ export default function Header({
             </div>
           )}
 
-          {/* Links de Navegação */}
           <nav className="flex flex-col gap-2">
             <Link
               href="/"
@@ -239,7 +231,6 @@ export default function Header({
           </nav>
         </div>
 
-        {/* Rodapé (Botão de Logout) */}
         {isAuthenticated && (
           <div className="p-5 border-t border-gray-100">
             <button
