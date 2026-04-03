@@ -13,7 +13,7 @@ def create_app():
     from app.auth import init_app as init_auth
     init_auth(app)
 
-    from app.classrooms import init_app as init_cassrooms
-    init_cassrooms(app)
+    from app.classrooms import init_app as init_classrooms
+    init_classrooms(app)
     
     return app

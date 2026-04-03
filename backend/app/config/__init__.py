@@ -27,4 +27,4 @@ def init_app(app):
     config_class = os.getenv('APP_SETTINGS', 'app.config.DevelopmentConfig')
     app.config.from_object(config_class)
 
-    CORS(app, origins=app.config.get('CORS_ORIGINS'))
+    CORS(app, origins=app.config.get('CORS_ORIGINS'), resources={r"/*": {"origins": "*"}}, supports_credentials=True)
