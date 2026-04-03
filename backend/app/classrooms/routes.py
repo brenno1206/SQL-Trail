@@ -2,7 +2,8 @@ from flask import request, jsonify, Blueprint
 from flask_jwt_extended import get_jwt, get_jwt_identity
 from .services import ClassroomService
 from app.auth.decorators import role_required 
-import pandas as pd
+import pandas as pd # type: ignore
+import io
 
 classrooms_bp = Blueprint('classrooms', __name__)
 
@@ -205,24 +206,30 @@ def enroll_students_bulk(class_id):
         
     file = request.files['file']
     
-    if file.filename == '':
-        return jsonify({"error": "Nenhum arquivo selecionado."}), 400
-
     try:
+        file_content = file.read()
+        if not file_content:
+            return jsonify({"error": "O arquivo está vazio."}), 400
+
         if file.filename.endswith('.csv'):
-            df = pd.read_csv(file)
+            df = pd.read_csv(io.BytesIO(file_content), sep=';', engine='python', encoding='utf-8')
         elif file.filename.endswith(('.xls', '.xlsx')):
-            df = pd.read_excel(file)
+            try:
+                file.stream.seek(0)
+                file_content = file.read()
+                df = pd.read_excel(io.BytesIO(file_content), engine='calamine')
+            except Exception as e:
+                file.stream.seek(0)
+                df = pd.read_excel(io.BytesIO(file.read()), engine='openpyxl')
         else:
-            return jsonify({"error": "Formato de arquivo inválido. Apenas CSV ou Excel (.xlsx)."}), 400
-            
+            return jsonify({"error": "Formato inválido."}), 400
+
         success, message = ClassroomService.bulk_enroll_from_dataframe(class_id, df)
         
         if success:
             return jsonify({"message": message}), 200
-        else:
-            return jsonify({"error": message}), 400
-            
+        return jsonify({"error": message}), 400
+
     except Exception as e:
         return jsonify({"error": f"Erro ao ler o arquivo: {str(e)}"}), 500
 

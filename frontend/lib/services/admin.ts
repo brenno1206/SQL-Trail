@@ -31,42 +31,6 @@ export const AdminService = {
   },
 
   // ==========================
-  // STUDENT CRUD
-  // ==========================
-  getAllStudents: async () => {
-    const response = await api.get('/auth/students');
-    return response.data;
-  },
-
-  createStudent: async (studentData: {
-    registration_number: string;
-    name: string;
-    email?: string;
-    password?: string;
-  }) => {
-    const response = await api.post('/auth/student', studentData);
-    return response.data;
-  },
-
-  editStudent: async (
-    studentId: number,
-    studentData: {
-      registration_number?: string;
-      name?: string;
-      email?: string;
-      password?: string;
-    },
-  ) => {
-    const response = await api.put(`/auth/student/${studentId}`, studentData);
-    return response.data;
-  },
-
-  deleteStudent: async (studentId: number) => {
-    const response = await api.delete(`/auth/student/${studentId}`);
-    return response.data;
-  },
-
-  // ==========================
   // TEACHER CRUD
   // ==========================
   getAllTeachers: async () => {
@@ -103,6 +67,39 @@ export const AdminService = {
   },
 
   // ==========================
+  // STUDENT CRUD
+  // ==========================
+  getAllStudents: async () => {
+    const response = await api.get('/auth/students');
+    return response.data;
+  },
+
+  createStudent: async (studentData: {
+    registration_number: string;
+    name: string;
+  }) => {
+    const response = await api.post('/auth/student', studentData);
+    return response.data;
+  },
+
+  editStudent: async (
+    studentId: number,
+    studentData: {
+      registration_number?: string;
+      name?: string;
+      password?: string;
+    },
+  ) => {
+    const response = await api.put(`/auth/student/${studentId}`, studentData);
+    return response.data;
+  },
+
+  deleteStudent: async (studentId: number) => {
+    const response = await api.delete(`/auth/student/${studentId}`);
+    return response.data;
+  },
+
+  // ==========================
   // CLASS CRUD
   // ==========================
   getAllClasses: async () => {
@@ -112,7 +109,7 @@ export const AdminService = {
 
   createClass: async (classData: {
     class_name: string;
-    teacher_id?: number;
+    teacher_id: number;
     subject: string;
     year_semester: string;
   }) => {
@@ -124,7 +121,6 @@ export const AdminService = {
     classId: number,
     classData: {
       class_name?: string;
-      teacher_id?: number;
       subject?: string;
       year_semester?: string;
     },
@@ -141,7 +137,6 @@ export const AdminService = {
   // ==========================
   // ENROLLMENT OPERATIONS
   // ==========================
-
   getStudentsInClass: async (classId: number) => {
     const response = await api.get(`/classrooms/${classId}/students`);
     return response.data;
