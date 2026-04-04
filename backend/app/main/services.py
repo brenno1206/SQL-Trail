@@ -1,54 +1,253 @@
 import json
-from supabase import create_client
 import os
 import time
 import re
-import pandas as pd
+import pandas as pd # type: ignore
+from supabase import create_client
+from sqlalchemy.exc import SQLAlchemyError
+from app.database import Session
+from app.database.models import ScenarioDatabase, Question, Submission
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-class QuestionRepository:
-    """Gerencia o carregamento e recuperação das questoes do arquivo JSON."""
-    def __init__(self, json_path=os.path.join(BASE_DIR, "..", "questoes.json")):
-        self.QUESTIONS = {}
-        self._load_questions(json_path)
+class ScenarioDatabaseService:
+    """Gerencia a recuperação dos bancos de dados de cenário."""
     
-    def _load_questions(self, json_path):
+    @staticmethod
+    def get_all_scenarios():
         try:
-            with open(json_path, encoding='utf-8') as f:
-                questionsList = json.load(f)
-            self.QUESTIONS = {
-                (db['slug'], q['id']): q
-                    for db in questionsList
-                    for q in db['questions']
-            }
-        except FileNotFoundError:
-            print(f"Arquivo {json_path} nao encontrado.")
-            self.QUESTIONS = {}
-        except Exception as e:
-            print(f"Erro durante o carregamento das questoes: {e}")
-            self.QUESTIONS = {}
+            with Session() as session:
+                scenarios = session.query(ScenarioDatabase).all()
+                session.expunge_all()
+                return True, scenarios
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar bancos de dados: {str(e)}"
 
-    def get_questions(self, slug):
-        """Retorna lista de questões filtrada por slug."""
-        return [
-            {'id': q['id'], 'slug': slug, 'enunciado': q['enunciado']}
-            for key, q in self.QUESTIONS.items()
-            if key[0] == slug
-        ]
+    @staticmethod
+    def get_scenario_by_slug(slug):
+        try:
+            with Session() as session:
+                scenario = session.query(ScenarioDatabase).filter_by(slug=slug).first()
+                if scenario:
+                    session.expunge(scenario)
+                    return True, scenario
+                return False, "Banco de dados não encontrado."
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar banco de dados: {str(e)}"
+
+    @staticmethod
+    def create_scenario(data):
+        try:
+            with Session() as session:
+                scenario = ScenarioDatabase(
+                    name=data.get('name'),
+                    slug=data.get('slug'),
+                    diagram_url=data.get('diagram_url')
+                )
+                session.add(scenario)
+                session.commit()
+                session.refresh(scenario)
+                session.expunge(scenario)
+                return True, scenario
+        except SQLAlchemyError as e:
+            return False, f"Erro ao criar banco de dados: {str(e)}"
+
+    @staticmethod
+    def delete_scenario(scenario_id):
+        try:
+            with Session() as session:
+                scenario = session.query(ScenarioDatabase).filter_by(id=scenario_id).first()
+                if not scenario:
+                    return False, "Banco de dados não encontrado."
+                
+                session.delete(scenario)
+                session.commit()
+                return True, "Banco de dados deletado com sucesso."
+        except SQLAlchemyError as e:
+            return False, f"Erro ao deletar banco de dados: {str(e)}"
     
-    def get_question(self, slug, id):
-        """Retorna uma questao específica com base no slug e id."""
-        return self.QUESTIONS.get((slug, id))
+    @staticmethod
+    def update_scenario(scenario_id, data):
+        try:
+            with Session() as session:
+                scenario = session.query(ScenarioDatabase).filter_by(id=scenario_id).first()
+                if not scenario:
+                    return False, "Banco de dados não encontrado."
+                
+                if 'name' in data: scenario.name = data['name']
+                if 'slug' in data: scenario.slug = data['slug']
+                if 'diagram_url' in data: scenario.diagram_url = data['diagram_url']
+                
+                session.commit()
+                session.refresh(scenario)
+                session.expunge(scenario)
+                return True, scenario
+        except SQLAlchemyError as e:
+            return False, f"Erro ao atualizar banco de dados: {str(e)}"
+
+class QuestionService:
+    """Gerencia o CRUD das questões no banco de dados TiDB."""
     
-    def exists(self, slug, id):
-        """Verifica se uma questao existe com base no slug e id."""
-        return (slug, id) in self.QUESTIONS
+    @staticmethod
+    def create_question(data):
+        try:
+            with Session() as session:
+                question = Question(
+                    scenario_database_id=data.get('scenario_database_id'),
+                    statement=data.get('statement'),
+                    expected_query=data.get('expected_query'),
+                    difficulty=data.get('difficulty'),
+                    is_special=data.get('is_special', False)
+                )
+                session.add(question)
+                session.commit()
+                session.refresh(question)
+                session.expunge(question)
+                return True, question
+        except SQLAlchemyError as e:
+            return False, f"Erro ao criar questão: {str(e)}"
+
+    @staticmethod
+    def get_all_questions():
+        try:
+            with Session() as session:
+                questions = session.query(Question).all()
+                session.expunge_all()
+                return True, questions
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar questões: {str(e)}"
+
+    @staticmethod
+    def get_questions_by_scenario(scenario_id):
+        try:
+            with Session() as session:
+                questions = session.query(Question).filter_by(scenario_database_id=scenario_id).all()
+                session.expunge_all()
+                return True, questions
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar questões do cenário: {str(e)}"
+
+    @staticmethod
+    def get_question_by_id(question_id):
+        try:
+            with Session() as session:
+                question = session.query(Question).filter_by(id=question_id).first()
+                if question:
+                    session.expunge(question)
+                    return True, question
+                return False, "Questão não encontrada."
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar questão: {str(e)}"
+
+    @staticmethod
+    def get_special_questions(scenario_id, limit=10):
+        try:
+            with Session() as session:
+                questions = session.query(Question).filter_by(
+                    scenario_database_id=scenario_id, 
+                    is_special=True
+                ).limit(limit).all()
+                session.expunge_all()
+                return True, questions
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar questões especiais: {str(e)}"
+
+    @staticmethod
+    def get_not_special_questions(scenario_id):
+        try:
+            with Session() as session:
+                questions = session.query(Question).filter_by(
+                    scenario_database_id=scenario_id, 
+                    is_special=False
+                ).all()
+                session.expunge_all()
+                return True, questions
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar questões não especiais: {str(e)}"
+
+    @staticmethod
+    def update_question(question_id, data):
+        try:
+            with Session() as session:
+                question = session.query(Question).filter_by(id=question_id).first()
+                if not question:
+                    return False, "Questão não encontrada."
+                
+                if 'statement' in data: question.statement = data['statement']
+                if 'expected_query' in data: question.expected_query = data['expected_query']
+                if 'difficulty' in data: question.difficulty = data['difficulty']
+                if 'is_special' in data: question.is_special = data['is_special']
+                
+                session.commit()
+                session.refresh(question)
+                session.expunge(question)
+                return True, question
+        except SQLAlchemyError as e:
+            return False, f"Erro ao atualizar questão: {str(e)}"
+
+    @staticmethod
+    def delete_question(question_id):
+        try:
+            with Session() as session:
+                question = session.query(Question).filter_by(id=question_id).first()
+                if not question:
+                    return False, "Questão não encontrada."
+                
+                session.delete(question)
+                session.commit()
+                return True, "Questão deletada com sucesso."
+        except SQLAlchemyError as e:
+            return False, f"Erro ao deletar questão: {str(e)}"
+
+
+class SubmissionService:
+    """Gerencia as submissões dos alunos e verifica progresso."""
     
+    @staticmethod
+    def save_submission(student_id, question_id, time_spent, submitted_query, is_correct, output):
+        try:
+            with Session() as session:
+                submission = Submission(
+                    student_id=student_id,
+                    question_id=question_id,
+                    time_spent_seconds=time_spent,
+                    submitted_query=submitted_query,
+                    is_correct=is_correct,
+                    execution_output=json.dumps(output) if output else None
+                )
+                session.add(submission)
+                session.commit()
+                return True, "Submissão salva com sucesso."
+        except SQLAlchemyError as e:
+            return False, f"Erro ao salvar submissão: {str(e)}"
+
+    @staticmethod
+    def check_special_completion(student_id, scenario_id):
+        """Verifica se o aluno comletou as 10 questões especiais do cenário."""
+        try:
+            with Session() as session:
+                special_questions = session.query(Question).filter_by(
+                    scenario_database_id=scenario_id, 
+                    is_special=True
+                ).all()
+                special_ids = [q.id for q in special_questions]
+                
+                if not special_ids:
+                    return False, "Nenhuma questão especial encontrada para este cenário."
+
+                completed_count = session.query(Submission).filter(
+                    Submission.student_id == student_id,
+                    Submission.question_id.in_(special_ids),
+                    Submission.is_correct == True
+                ).distinct(Submission.question_id).count()
+
+                return completed_count >= 10, completed_count
+        except SQLAlchemyError as e:
+            return False, f"Erro ao verificar progresso: {str(e)}"
+
 class SupabaseService:
     """Gerencia conexoes e execução de queries RPC no Supabase."""
 
-    def get_client(self, slug):
+    @staticmethod
+    def get_client(slug):
         """Cria o cliente Supabase dinamicamente com base no slug."""
         suffix = slug.upper().replace('-', '_')
         url = os.getenv(f"SUPABASE_URL_{suffix}")
@@ -57,7 +256,8 @@ class SupabaseService:
             return None
         return create_client(url, key)
     
-    def execute_query(self, client, sql: str, max_rows: int = 20, retries: int = 3, backoff: float = 1.0):
+    @staticmethod
+    def execute_query(client, sql: str, max_rows: int = 20, retries: int = 3, backoff: float = 1.0):
         """Executa a query via RCP com logica de retry e tratamento de erros."""
         sql = sql.strip().rstrip(';')
         last_exception = None
@@ -133,7 +333,8 @@ class SQLGrader:
 
         return True, "Valid."
     
-    def compare(self, base_sql, student_sql, base_res, student_res):
+    @staticmethod
+    def compare(base_sql, student_sql, base_res, student_res):
         """Compara os DataFrames resultantes em 3 niveis: Exato, Ordenacao, Alfanumerico."""
         base_upper = " " + base_sql.upper().replace('\n', ' ') + " "
         
@@ -153,15 +354,15 @@ class SQLGrader:
             return True, "Parabens! As consultas sao equivalentes."
         
         # Normalização
-        df_base_norm = self._normalize_df(df_base)
-        df_stu_norm = self._normalize_df(df_stu)
+        df_base_norm = SQLGrader._normalize_df(df_base)
+        df_stu_norm = SQLGrader._normalize_df(df_stu)
 
         # NÍVEL 1: Conteúdo Correto, Ordem Correta
         if df_base_norm.values.tolist() == df_stu_norm.values.tolist():
             return True, "Parabens! As consultas sao equivalentes."
 
         # NÍVEL 2: Conteúdo Correto, Ordem Errada
-        if self._sort_matrix(df_base_norm) == self._sort_matrix(df_stu_norm):
+        if SQLGrader._sort_matrix(df_base_norm) == SQLGrader._sort_matrix(df_stu_norm):
             if re.search(r'\bORDER\s+BY\b', base_upper):
                 return False, "Os dados estão corretos, mas a ordem está errada."
             return True, "Parabens! As consultas sao equivalentes."
@@ -195,16 +396,19 @@ class SQLGrader:
 
         return False, "Os dados nao conferem."
 
-    def _normalize_df(self, df):
+    @staticmethod
+    def _normalize_df(df):
         df = df.round(2)
         df = df.astype(str)
         df = df.map(lambda x: x.strip().lower() if isinstance(x, str) else x)
         return df
     
-    def _sort_matrix(self, df):
+    @staticmethod
+    def _sort_matrix(df):
         return sorted(df.values.tolist())
     
-    def _get_alphanumeric_fingerprint(self, df):
+    @staticmethod
+    def _get_alphanumeric_fingerprint(df):
         fingerprints = []
         for _, row in df.iterrows():
             row_str = "".join([str(x) for x in row.values])
