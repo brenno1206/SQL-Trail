@@ -30,6 +30,16 @@ export const AdminService = {
     return response.data;
   },
 
+  getAdmin: async (adminId: number) => {
+    const response = await api.get(`/auth/admin/${adminId}`);
+    return response.data;
+  },
+
+  getAllAdmins: async () => {
+    const response = await api.get('/auth/admins');
+    return response.data;
+  },
+
   // ==========================
   // TEACHER CRUD
   // ==========================

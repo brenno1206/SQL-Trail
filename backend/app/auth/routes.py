@@ -59,6 +59,20 @@ def delete_admin(admin_id):
         return jsonify(response), 404
     return jsonify(response), 200
 
+@auth_bp.route('/admins', methods=['GET'])
+@role_required('admin')
+def get_all_admins():
+    """
+    Rota para listar todos os administradores cadastrados.
+    Acesso restrito a administradores.
+    """
+    success, result = AuthService.get_all_admins()
+    
+    if success:
+        return jsonify([serialize_user(admin) for admin in result]), 200
+        
+    return jsonify(result), 500
+
 
 # teacher routes
 

@@ -104,6 +104,18 @@ class AuthService:
             session.rollback()
             return False, {"error": f"Erro ao deletar admin: {str(e)}"}
 
+    @staticmethod
+    def get_all_admins():
+        """
+        Retorna todos os admins cadastrados no sistema.
+        """
+        try:
+            with Session() as session:
+                admins = session.query(Admin).all()
+                session.expunge_all()
+                return True, admins
+        except SQLAlchemyError as e:
+            return False, {"error": f"Erro ao buscar admins: {str(e)}"}
     
     # --- TEACHER SERVICES ---
 

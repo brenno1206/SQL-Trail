@@ -72,6 +72,21 @@ const AdminDashboard = ({ userName }: { userName: string }) => (
           Acessar Painel &rarr;
         </Link>
       </div>
+
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-700 border-t-4 border-t-purple-500 hover:-translate-y-1 transition-transform">
+        <h3 className="font-bold text-gray-800 dark:text-white mb-1">
+          Administradores
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Gerenciar acessos e outros administradores.
+        </p>
+        <Link
+          href="/admin/admins"
+          className="text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline"
+        >
+          Acessar Painel &rarr;
+        </Link>
+      </div>
     </div>
   </section>
 );
