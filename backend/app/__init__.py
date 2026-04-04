@@ -15,5 +15,8 @@ def create_app():
 
     from app.classrooms import init_app as init_classrooms
     init_classrooms(app)
+
+    from app.reports import init_app as init_reports
+    init_reports(app)
     
     return app
