@@ -175,4 +175,130 @@ export const AdminService = {
     );
     return response.data;
   },
+
+  // ==========================
+  // SCENARIO CRUD
+  // ==========================
+  getAllScenarios: async () => {
+    const response = await api.get('/scenarios');
+    return response.data;
+  },
+
+  createScenario: async (scenarioData: {
+    name: string;
+    slug: string;
+    diagram_url: string;
+  }) => {
+    const response = await api.post('/scenarios', scenarioData);
+    return response.data;
+  },
+
+  getScenarioBySlug: async (slug: string) => {
+    const response = await api.get(`/scenarios/${slug}`);
+    return response.data;
+  },
+
+  editScenario: async (
+    slug: string,
+    scenarioData: {
+      name?: string;
+      slug?: string;
+      diagram_url?: string;
+    },
+  ) => {
+    const response = await api.put(`/scenarios/${slug}`, scenarioData);
+    return response.data;
+  },
+
+  deleteScenario: async (slug: string) => {
+    const response = await api.delete(`/scenarios/${slug}`);
+    return response.data;
+  },
+
+  // ==========================
+  // QUESTION CRUD
+  // ==========================
+  getAllQuestions: async () => {
+    const response = await api.get('/questions');
+    return response.data;
+  },
+
+  createQuestion: async (questionData: {
+    scenario_database_id: number;
+    statement: string;
+    expected_query: string;
+    difficulty: number;
+    is_special?: boolean;
+  }) => {
+    const response = await api.post('/questions', questionData);
+    return response.data;
+  },
+
+  getQuestionById: async (questionId: number) => {
+    const response = await api.get(`/questions/${questionId}`);
+    return response.data;
+  },
+
+  editQuestion: async (
+    questionId: number,
+    questionData: {
+      statement?: string;
+      expected_query?: string;
+      difficulty: number;
+      is_special?: boolean;
+    },
+  ) => {
+    const response = await api.put(`/questions/${questionId}`, questionData);
+    return response.data;
+  },
+
+  deleteQuestion: async (questionId: number) => {
+    const response = await api.delete(`/questions/${questionId}`);
+    return response.data;
+  },
+
+  // ==========================
+  // TESTING & VALIDATION
+  // ==========================
+  validateTestingQuery: async (testingData: {
+    slug: string;
+    question_id: number;
+    testing_sql: string;
+  }) => {
+    const response = await api.post('/validate/testing', testingData);
+    return response.data;
+  },
+
+  // ==========================
+  // REPORTS & METRICS
+  // ==========================
+  getGlobalMetrics: async (params?: {
+    scenario_id?: number;
+    class_id?: number;
+    year_semester?: string;
+    question_id?: number;
+  }) => {
+    const response = await api.get('/reports/questions/metrics', { params });
+    return response.data;
+  },
+
+  getStudentProgress: async (
+    studentId: number,
+    params?: { scenario_id?: number },
+  ) => {
+    const response = await api.get(`/reports/students/${studentId}/progress`, {
+      params,
+    });
+    return response.data;
+  },
+
+  getStudentQuestionEngagement: async (
+    studentId: number,
+    questionId: number,
+  ) => {
+    const response = await api.get(
+      `/reports/students/${studentId}/questions/${questionId}/engagement`,
+    );
+    return response.data;
+  },
 };

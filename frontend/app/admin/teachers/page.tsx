@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { AdminService } from '@/lib/services/admin';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { AdminService } from '@/lib/services/admin'; // Ajuste o caminho conforme seu projeto
 
+// Tipagens baseadas no seu backend
 interface Teacher {
   id: number;
   name: string;
+  email: string;
+  registration_number: string;
 }
 
 interface ClassItem {
@@ -20,68 +22,56 @@ interface ClassItem {
   year_semester: string;
 }
 
-interface Student {
-  id: number;
-  name: string;
-  registration_number: string;
-}
-
+// Tipagem para a notificação
 interface Notification {
   message: string;
   type: 'success' | 'error' | 'warning';
 }
 
-export default function AdminClassesPage() {
-  const [classes, setClasses] = useState<ClassItem[]>([]);
+export default function AdminTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Estado para o botão de carregamento
   const [notification, setNotification] = useState<Notification | null>(null);
 
+  // Estados dos Modais
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const [classStudents, setClassStudents] = useState<Student[]>([]);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
-
+  // Estados dos formulários
   const [formData, setFormData] = useState({
-    class_name: '',
-    subject: '',
-    year_semester: '',
-    teacher_id: '',
+    name: '',
+    email: '',
+    registration_number: '',
+    password: '',
   });
 
-  const [enrollData, setEnrollData] = useState({
-    matricula: '',
-    nome: '',
-  });
-
-  const [bulkFile, setBulkFile] = useState<File | null>(null);
-
+  // Função para exibir a notificação que some após 10 segundos
   const showNotification = (
     message: string,
     type: 'success' | 'error' | 'warning',
   ) => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 10000);
+    setTimeout(() => {
+      setNotification(null);
+    }, 10000);
   };
 
+  // Carregar dados iniciais
   const loadData = async () => {
     setLoading(true);
     try {
-      const [classesData, teachersData] = await Promise.all([
-        AdminService.getAllClasses(),
+      const [teachersData, classesData] = await Promise.all([
         AdminService.getAllTeachers(),
+        AdminService.getAllClasses(),
       ]);
-      setClasses(classesData);
       setTeachers(teachersData);
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao carregar turma.';
-      showNotification(errorMessage, 'error');
+      setClasses(classesData);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      showNotification('Erro ao carregar professores e turmas.', 'error');
     } finally {
       setLoading(false);
     }
@@ -92,85 +82,67 @@ export default function AdminClassesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadClassStudents = async (classId: number) => {
-    setIsLoadingStudents(true);
-    try {
-      const students = await AdminService.getStudentsInClass(classId);
-      setClassStudents(students);
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao buscar alunos da turma.';
-      showNotification(errorMessage, 'error');
-    } finally {
-      setIsLoadingStudents(false);
-    }
-  };
-
+  // Handlers para Criação
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.teacher_id) {
-      showNotification('Selecione um professor.', 'warning');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await AdminService.createClass({
-        class_name: formData.class_name,
-        subject: formData.subject,
-        year_semester: formData.year_semester,
-        teacher_id: parseInt(formData.teacher_id),
-      });
-      showNotification('Turma criada com sucesso!', 'success');
+      await AdminService.createTeacher(formData);
+      showNotification('Professor criado com sucesso!', 'success');
       setIsCreateModalOpen(false);
+      setFormData({
+        name: '',
+        email: '',
+        registration_number: '',
+        password: '',
+      });
       await loadData();
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao criar turma.';
-      showNotification(errorMessage, 'error');
+    } catch (error) {
+      console.error(error);
+      showNotification('Erro ao criar professor.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Handlers para Edição
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClass) return;
+    if (!selectedTeacher) return;
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        class_name: formData.class_name,
-        subject: formData.subject,
-        year_semester: formData.year_semester,
+      // Se a senha estiver vazia, não enviamos para não sobrescrever
+      const payload: any = {
+        name: formData.name,
+        email: formData.email,
+        registration_number: formData.registration_number,
       };
+      if (formData.password) payload.password = formData.password;
 
-      await AdminService.editClass(selectedClass.id, payload);
-      showNotification('Turma atualizada com sucesso!', 'success');
+      await AdminService.editTeacher(selectedTeacher.id, payload);
+      showNotification('Professor atualizado com sucesso!', 'success');
       setIsEditMode(false);
       await loadData();
-      setSelectedClass({ ...selectedClass, ...payload });
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao carregar turma.';
-      showNotification(errorMessage, 'error');
+
+      // Atualiza o professor selecionado no modal atual para refletir as mudanças
+      setSelectedTeacher({ ...selectedTeacher, ...payload });
+    } catch (error) {
+      console.error(error);
+      showNotification('Erro ao editar professor.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteClass = async () => {
-    if (!selectedClass) return;
+  // Handler para Exclusão
+  const handleDeleteTeacher = async () => {
+    if (!selectedTeacher) return;
 
+    // Confirmação simples para evitar deletar sem querer
     if (
       !window.confirm(
-        'Tem certeza que deseja excluir esta turma? Todos os vínculos serão perdidos.',
+        'Tem certeza que deseja excluir este professor? Essa ação não pode ser desfeita.',
       )
     ) {
       return;
@@ -178,127 +150,76 @@ export default function AdminClassesPage() {
 
     setIsSubmitting(true);
     try {
-      await AdminService.deleteClass(selectedClass.id);
-      showNotification('Turma excluída com sucesso!', 'success');
-      setSelectedClass(null);
-      await loadData();
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao excluir turma.';
-      showNotification(errorMessage, 'error');
+      await AdminService.deleteTeacher(selectedTeacher.id);
+      showNotification('Professor excluído com sucesso!', 'success');
+      setSelectedTeacher(null); // Fecha o modal
+      await loadData(); // Recarrega a lista
+    } catch (error) {
+      console.error(error);
+      showNotification('Erro ao excluir professor.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleEnrollSingle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedClass) return;
-    setIsSubmitting(true);
-
-    try {
-      await AdminService.enrollStudent(selectedClass.id, enrollData);
-      showNotification('Aluno matriculado com sucesso!', 'success');
-      setEnrollData({ matricula: '', nome: '' });
-      await loadClassStudents(selectedClass.id);
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao matricular aluno.';
-      showNotification(errorMessage, 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleBulkEnroll = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedClass || !bulkFile) {
-      showNotification('Selecione um arquivo CSV ou Excel.', 'warning');
-      return;
-    }
-    setIsSubmitting(true);
-
-    try {
-      await AdminService.enrollStudentsBulk(selectedClass.id, bulkFile);
-      showNotification('Alunos importados com sucesso!', 'success');
-      setBulkFile(null);
-      const fileInput = document.getElementById(
-        'file-upload',
-      ) as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-      await loadClassStudents(selectedClass.id);
-    } catch (error: any) {
-      const errorMsg =
-        error.response?.data?.error || 'Erro ao processar arquivo.';
-      showNotification(errorMsg, 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRemoveEnrollment = async (
-    studentId: number,
-    studentName: string,
-  ) => {
-    if (!selectedClass) return;
-    if (
-      !window.confirm(
-        `Tem certeza que deseja remover ${studentName} desta turma?`,
-      )
-    )
-      return;
-
-    try {
-      await AdminService.removeEnrollment(selectedClass.id, studentId);
-      showNotification('Matrícula removida com sucesso.', 'success');
-      await loadClassStudents(selectedClass.id);
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao remover matrícula.';
-      showNotification(errorMessage, 'error');
-    }
-  };
-
-  const openClassDetails = (classroom: ClassItem) => {
-    setSelectedClass(classroom);
+  // Abrir modal de detalhes
+  const openTeacherDetails = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
     setIsEditMode(false);
     setFormData({
-      class_name: classroom.class_name,
-      subject: classroom.subject,
-      year_semester: classroom.year_semester,
-      teacher_id: classroom.teacher_id.toString(),
+      name: teacher.name,
+      email: teacher.email,
+      registration_number: teacher.registration_number,
+      password: '', // Senha em branco por segurança
     });
-    setEnrollData({ matricula: '', nome: '' });
-    setBulkFile(null);
-    loadClassStudents(classroom.id);
   };
 
+  // Abrir modal de criação (garante que os inputs estarão limpos)
   const openCreateModal = () => {
     setFormData({
-      class_name: '',
-      subject: '',
-      year_semester: '',
-      teacher_id: '',
+      name: '',
+      email: '',
+      registration_number: '',
+      password: '',
     });
     setIsCreateModalOpen(true);
   };
 
-  const getTeacherName = (teacherId: number) => {
-    const teacher = teachers.find((t) => t.id === teacherId);
-    return teacher ? teacher.name : `ID: ${teacherId}`;
-  };
+  // Filtrar turmas do professor selecionado
+  const teacherClasses = classes.filter(
+    (c) => c.teacher_id === selectedTeacher?.id,
+  );
+
+  // Componente de Spinner reutilizável
+  const LoadingSpinner = () => (
+    <svg
+      className="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      ></circle>
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      ></path>
+    </svg>
+  );
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen flex flex-col bg-gray-50 relative">
         <Header />
 
+        {/* NOTIFICAÇÃO (TOAST) */}
         {notification && (
           <div
             className={`fixed top-4 right-4 z-60 px-6 py-3 rounded-md shadow-lg text-white font-medium transition-all duration-300 animate-fade-in-down ${
@@ -315,133 +236,113 @@ export default function AdminClassesPage() {
 
         <main className="grow max-w-5xl w-full mx-auto p-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Turmas</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Professores</h1>
             <button
               onClick={openCreateModal}
               className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition cursor-pointer flex items-center"
             >
-              + Nova Turma
+              + Novo Professor
             </button>
           </div>
 
+          {/* LISTA DE PROFESSORES */}
           {loading ? (
             <div className="flex items-center justify-center p-8">
               <LoadingSpinner />
               <p className="text-gray-500 ml-2">Carregando...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {classes.length === 0 && (
-                <div className="col-span-full p-4 text-gray-500 text-center bg-white rounded-lg shadow">
-                  Nenhuma turma encontrada.
-                </div>
-              )}
-              {classes.map((classroom) => (
-                <div
-                  key={classroom.id}
-                  onClick={() => openClassDetails(classroom)}
-                  className="bg-white p-5 rounded-lg shadow hover:shadow-md cursor-pointer transition border border-transparent hover:border-blue-200"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold text-gray-800">
-                      {classroom.class_name}
-                    </h3>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                      {classroom.year_semester}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-1">
-                    <span className="font-semibold">Disciplina:</span>{' '}
-                    {classroom.subject}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-semibold">Professor:</span>{' '}
-                    {getTeacherName(classroom.teacher_id)}
-                  </p>
-                </div>
-              ))}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <ul className="divide-y divide-gray-200">
+                {teachers.length === 0 && (
+                  <li className="p-4 text-gray-500 text-center">
+                    Nenhum professor encontrado.
+                  </li>
+                )}
+                {teachers.map((teacher) => (
+                  <li
+                    key={teacher.id}
+                    onClick={() => openTeacherDetails(teacher)}
+                    className="p-4 hover:bg-gray-50 cursor-pointer transition"
+                  >
+                    <div className="font-semibold text-gray-800">
+                      {teacher.name}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Matrícula: {teacher.registration_number} | {teacher.email}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </main>
+
         <Footer />
       </div>
 
+      {/* MODAL DE CRIAÇÃO */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Nova Turma</h2>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 cursor-pointer text-2xl"
-              >
-                &times;
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-2xl font-bold mb-4">Novo Professor</h2>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Professor Responsável
-                </label>
-                <select
-                  required
-                  className="mt-1 block w-full border rounded p-2 bg-white cursor-pointer"
-                  value={formData.teacher_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, teacher_id: e.target.value })
-                  }
-                >
-                  <option value="" disabled>
-                    Selecione um professor
-                  </option>
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Nome da Turma
+                  Nome
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Banco de Dados A"
                   className="mt-1 block w-full border rounded p-2"
-                  value={formData.class_name}
+                  value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, class_name: e.target.value })
+                    setFormData({ ...formData, name: e.target.value })
                   }
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Disciplina
+                  Matrícula
                 </label>
                 <input
                   type="text"
                   required
                   className="mt-1 block w-full border rounded p-2"
-                  value={formData.subject}
+                  value={formData.registration_number}
                   onChange={(e) =>
-                    setFormData({ ...formData, subject: e.target.value })
+                    setFormData({
+                      ...formData,
+                      registration_number: e.target.value,
+                    })
                   }
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Ano/Semestre
+                  Email
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   required
-                  placeholder="Ex: 2026/1"
                   className="mt-1 block w-full border rounded p-2"
-                  value={formData.year_semester}
+                  value={formData.email}
                   onChange={(e) =>
-                    setFormData({ ...formData, year_semester: e.target.value })
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Senha Provisória
+                </label>
+                <input
+                  type="password"
+                  required
+                  className="mt-1 block w-full border rounded p-2"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
                   }
                 />
               </div>
@@ -450,17 +351,17 @@ export default function AdminClassesPage() {
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer flex items-center justify-center disabled:opacity-70"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting && <LoadingSpinner />}
-                  Salvar Turma
+                  Salvar
                 </button>
               </div>
             </form>
@@ -468,258 +369,177 @@ export default function AdminClassesPage() {
         </div>
       )}
 
-      {selectedClass && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col md:flex-row gap-6 shadow-xl">
-            <div className="flex-1 border-b md:border-b-0 md:border-r border-gray-200 pb-6 md:pb-0 md:pr-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {isEditMode ? 'Editar Turma' : 'Detalhes da Turma'}
-                </h2>
-              </div>
+      {/* MODAL DE DETALHES / EDIÇÃO */}
+      {selectedTeacher && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">
+                {isEditMode ? 'Editar Professor' : 'Detalhes do Professor'}
+              </h2>
+              <button
+                onClick={() => setSelectedTeacher(null)}
+                className="text-gray-500 hover:text-black cursor-pointer text-xl p-2"
+              >
+                ✕
+              </button>
+            </div>
 
-              <form onSubmit={handleEditSubmit} className="space-y-4">
+            {/* FORMULÁRIO DE INFORMAÇÕES (Visualização ou Edição) */}
+            <form onSubmit={handleEditSubmit} className="space-y-4 mb-6">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Professor
-                  </label>
-                  <input
-                    type="text"
-                    disabled
-                    className="mt-1 block w-full border rounded p-2 bg-gray-100 text-gray-500"
-                    value={getTeacherName(selectedClass.teacher_id)}
-                  />
-                  <span className="text-xs text-gray-400">
-                    O dono da turma não pode ser alterado.
-                  </span>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Nome da Turma
+                    Nome
                   </label>
                   <input
                     type="text"
                     required
                     disabled={!isEditMode || isSubmitting}
-                    className="mt-1 block w-full border rounded p-2 disabled:bg-gray-50"
-                    value={formData.class_name}
+                    className="mt-1 block w-full border rounded p-2 disabled:bg-gray-100 disabled:text-gray-600"
+                    value={formData.name}
                     onChange={(e) =>
-                      setFormData({ ...formData, class_name: e.target.value })
+                      setFormData({ ...formData, name: e.target.value })
                     }
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Disciplina
+                    Matrícula
                   </label>
                   <input
                     type="text"
                     required
                     disabled={!isEditMode || isSubmitting}
-                    className="mt-1 block w-full border rounded p-2 disabled:bg-gray-50"
-                    value={formData.subject}
-                    onChange={(e) =>
-                      setFormData({ ...formData, subject: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Ano/Semestre
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    disabled={!isEditMode || isSubmitting}
-                    className="mt-1 block w-full border rounded p-2 disabled:bg-gray-50"
-                    value={formData.year_semester}
+                    className="mt-1 block w-full border rounded p-2 disabled:bg-gray-100 disabled:text-gray-600"
+                    value={formData.registration_number}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        year_semester: e.target.value,
+                        registration_number: e.target.value,
                       })
                     }
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    disabled={!isEditMode || isSubmitting}
+                    className="mt-1 block w-full border rounded p-2 disabled:bg-gray-100 disabled:text-gray-600"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                  />
+                </div>
+                {isEditMode && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Nova Senha (deixe em branco para não alterar)
+                    </label>
+                    <input
+                      type="password"
+                      disabled={isSubmitting}
+                      className="mt-1 block w-full border rounded p-2 disabled:bg-gray-100"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                    />
+                  </div>
+                )}
+              </div>
 
-                <div className="pt-4 flex flex-col gap-2">
+              {/* Botões de Ação do Perfil */}
+              <div className="flex justify-between items-center pt-4">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleDeleteTeacher}
+                  className="px-4 py-2 bg-red-100 text-red-700 border border-red-200 rounded hover:bg-red-200 transition cursor-pointer flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting && <LoadingSpinner />}
+                  Excluir Professor
+                </button>
+
+                <div className="flex gap-2">
                   {isEditMode ? (
-                    <div className="flex gap-2">
+                    <>
                       <button
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => {
                           setIsEditMode(false);
+                          // Restaura os dados originais se cancelar
                           setFormData({
-                            class_name: selectedClass.class_name,
-                            subject: selectedClass.subject,
-                            year_semester: selectedClass.year_semester,
-                            teacher_id: selectedClass.teacher_id.toString(),
+                            name: selectedTeacher.name,
+                            email: selectedTeacher.email,
+                            registration_number:
+                              selectedTeacher.registration_number,
+                            password: '',
                           });
                         }}
-                        className="flex-1 px-4 py-2 border rounded text-gray-600 hover:bg-gray-100 transition cursor-pointer disabled:opacity-50"
+                        className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Cancelar
                       </button>
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition cursor-pointer flex items-center justify-center disabled:opacity-70"
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
                       >
                         {isSubmitting && <LoadingSpinner />}
-                        Salvar
+                        Salvar Alterações
                       </button>
-                    </div>
+                    </>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setIsEditMode(true)}
-                      className="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition cursor-pointer"
+                      className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 cursor-pointer"
                     >
-                      Editar Dados da Turma
+                      Editar Informações
                     </button>
                   )}
-
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={handleDeleteClass}
-                    className="w-full px-4 py-2 bg-red-100 text-red-700 border border-red-200 rounded hover:bg-red-200 transition cursor-pointer disabled:opacity-50 mt-4"
-                  >
-                    Excluir Turma
-                  </button>
                 </div>
-              </form>
-            </div>
-
-            <div className="flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">
-                  Alunos Matriculados
-                </h3>
-                <button
-                  onClick={() => setSelectedClass(null)}
-                  className="text-gray-500 hover:text-black cursor-pointer text-3xl leading-none p-2"
-                >
-                  &times;
-                </button>
               </div>
+            </form>
 
-              <div className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200 space-y-4">
-                <form
-                  onSubmit={handleEnrollSingle}
-                  className="flex gap-2 items-end"
-                >
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Matrícula
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: 2023101"
-                      className="block w-full border rounded p-1.5 text-sm"
-                      value={enrollData.matricula}
-                      onChange={(e) =>
-                        setEnrollData({
-                          ...enrollData,
-                          matricula: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Nome do Aluno
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: João Silva"
-                      className="block w-full border rounded p-1.5 text-sm"
-                      value={enrollData.nome}
-                      onChange={(e) =>
-                        setEnrollData({ ...enrollData, nome: e.target.value })
-                      }
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition h-[34px] cursor-pointer disabled:opacity-50"
-                  >
-                    Adicionar
-                  </button>
-                </form>
+            <hr className="my-6" />
 
-                <hr className="border-gray-300" />
-
-                <form
-                  onSubmit={handleBulkEnroll}
-                  className="flex flex-col gap-2"
-                >
-                  <label className="block text-xs font-medium text-gray-600">
-                    Importar em Lote (CSV/XLSX)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="file"
-                      id="file-upload"
-                      accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                      onChange={(e) =>
-                        setBulkFile(e.target.files ? e.target.files[0] : null)
-                      }
-                      className="flex-1 block w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border rounded cursor-pointer"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!bulkFile || isSubmitting}
-                      className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 transition disabled:opacity-50 cursor-pointer"
+            {/* SEÇÃO DE TURMAS DO PROFESSOR */}
+            <div>
+              <h3 className="text-xl font-bold mb-3">Turmas Atribuídas</h3>
+              {teacherClasses.length === 0 ? (
+                <p className="text-gray-500 italic">
+                  Nenhuma turma atribuída a este professor.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {teacherClasses.map((c) => (
+                    <li
+                      key={c.id}
+                      className="p-3 bg-gray-50 rounded border flex justify-between items-center"
                     >
-                      Importar
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              <div className="flex-1 overflow-y-auto bg-white border rounded-lg max-h-[300px]">
-                {isLoadingStudents ? (
-                  <div className="flex items-center justify-center p-6 text-gray-500">
-                    <LoadingSpinner />{' '}
-                    <span className="ml-2 text-sm">Carregando alunos...</span>
-                  </div>
-                ) : classStudents.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-gray-500 italic">
-                    Nenhum aluno matriculado nesta turma.
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-gray-100">
-                    {classStudents.map((student) => (
-                      <li
-                        key={student.id}
-                        className="p-3 flex justify-between items-center hover:bg-gray-50"
-                      >
-                        <div>
-                          <p className="font-medium text-gray-800 text-sm">
-                            {student.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Matrícula: {student.registration_number}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() =>
-                            handleRemoveEnrollment(student.id, student.name)
-                          }
-                          className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
-                        >
-                          Remover
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          {c.class_name}
+                        </span>
+                        <span className="text-sm text-gray-500 ml-2">
+                          ({c.subject})
+                        </span>
+                      </div>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {c.year_semester}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>

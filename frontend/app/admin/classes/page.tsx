@@ -26,6 +26,17 @@ interface Student {
   registration_number: string;
 }
 
+interface QuestionMetric {
+  question_id: number;
+  total_attempts: number;
+  correct_attempts: number;
+  accuracy_percentage: number;
+  avg_time_spent_seconds: number;
+  avg_attempts_per_student: number;
+  students_attempted: number;
+  students_correct: number;
+}
+
 interface Notification {
   message: string;
   type: 'success' | 'error' | 'warning';
@@ -42,8 +53,15 @@ export default function AdminClassesPage() {
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<'students' | 'metrics'>(
+    'students',
+  );
+
   const [classStudents, setClassStudents] = useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+
+  const [classMetrics, setClassMetrics] = useState<QuestionMetric[]>([]);
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
 
   const [formData, setFormData] = useState({
     class_name: '',
@@ -108,6 +126,20 @@ export default function AdminClassesPage() {
     }
   };
 
+  const loadClassMetrics = async (classId: number) => {
+    setIsLoadingMetrics(true);
+    try {
+      const metrics = await AdminService.getGlobalMetrics({
+        class_id: classId,
+      });
+      setClassMetrics(metrics);
+    } catch (error: any) {
+      console.error('Erro ao buscar métricas da turma', error);
+    } finally {
+      setIsLoadingMetrics(false);
+    }
+  };
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.teacher_id) {
@@ -158,7 +190,7 @@ export default function AdminClassesPage() {
       const errorMessage =
         error.response?.data?.error ||
         error.response?.data?.message ||
-        'Erro ao criar turma.';
+        'Erro ao atualizar turma.';
       showNotification(errorMessage, 'error');
     } finally {
       setIsSubmitting(false);
@@ -186,7 +218,7 @@ export default function AdminClassesPage() {
       const errorMessage =
         error.response?.data?.error ||
         error.response?.data?.message ||
-        'Erro ao criar turma.';
+        'Erro ao excluir turma.';
       showNotification(errorMessage, 'error');
     } finally {
       setIsSubmitting(false);
@@ -207,7 +239,7 @@ export default function AdminClassesPage() {
       const errorMessage =
         error.response?.data?.error ||
         error.response?.data?.message ||
-        'Erro ao criar turma.';
+        'Erro ao matricular aluno.';
       showNotification(errorMessage, 'error');
     } finally {
       setIsSubmitting(false);
@@ -257,7 +289,7 @@ export default function AdminClassesPage() {
       const errorMessage =
         error.response?.data?.error ||
         error.response?.data?.message ||
-        'Erro ao criar turma.';
+        'Erro ao remover matrícula.';
       showNotification(errorMessage, 'error');
     }
   };
@@ -265,6 +297,7 @@ export default function AdminClassesPage() {
   const openClassDetails = (classroom: ClassItem) => {
     setSelectedClass(classroom);
     setIsEditMode(false);
+    setActiveTab('students');
     setFormData({
       class_name: classroom.class_name,
       subject: classroom.subject,
@@ -274,6 +307,7 @@ export default function AdminClassesPage() {
     setEnrollData({ matricula: '', nome: '' });
     setBulkFile(null);
     loadClassStudents(classroom.id);
+    loadClassMetrics(classroom.id);
   };
 
   const openCreateModal = () => {
@@ -290,6 +324,18 @@ export default function AdminClassesPage() {
     const teacher = teachers.find((t) => t.id === teacherId);
     return teacher ? teacher.name : `ID: ${teacherId}`;
   };
+
+  const totalClassAttempts = classMetrics.reduce(
+    (acc, m) => acc + m.total_attempts,
+    0,
+  );
+  const avgClassAccuracy =
+    classMetrics.length > 0
+      ? (
+          classMetrics.reduce((acc, m) => acc + m.accuracy_percentage, 0) /
+          classMetrics.length
+        ).toFixed(1)
+      : 0;
 
   return (
     <ProtectedRoute>
@@ -364,7 +410,7 @@ export default function AdminClassesPage() {
       </div>
 
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <h2 className="text-2xl font-bold mb-4">Nova Turma</h2>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
@@ -458,13 +504,20 @@ export default function AdminClassesPage() {
       )}
 
       {selectedClass && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col md:flex-row gap-6">
-            <div className="flex-1 border-b md:border-b-0 md:border-r border-gray-200 pb-6 md:pb-0 md:pr-6">
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row gap-6">
+            <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-gray-200 pb-6 md:pb-0 md:pr-6 overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">
                   {isEditMode ? 'Editar Turma' : 'Detalhes da Turma'}
                 </h2>
+
+                <button
+                  onClick={() => setSelectedClass(null)}
+                  className="md:hidden text-gray-500 hover:text-black cursor-pointer text-2xl leading-none"
+                >
+                  &times;
+                </button>
               </div>
 
               <form onSubmit={handleEditSubmit} className="space-y-4">
@@ -580,135 +633,261 @@ export default function AdminClassesPage() {
               </form>
             </div>
 
-            <div className="flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">
-                  Alunos Matriculados
-                </h3>
+            <div className="w-full md:w-2/3 flex flex-col overflow-hidden">
+              <div className="flex justify-between items-center mb-4 border-b">
+                <div className="flex gap-6">
+                  <button
+                    onClick={() => setActiveTab('students')}
+                    className={`pb-2 text-lg font-bold transition-colors cursor-pointer ${
+                      activeTab === 'students'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    Alunos Matriculados
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('metrics')}
+                    className={`pb-2 text-lg font-bold transition-colors cursor-pointer ${
+                      activeTab === 'metrics'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    Desempenho Geral
+                  </button>
+                </div>
+
                 <button
                   onClick={() => setSelectedClass(null)}
-                  className="text-gray-500 hover:text-black cursor-pointer text-2xl leading-none"
+                  className="hidden md:block text-gray-500 hover:text-black cursor-pointer text-3xl leading-none mb-2"
                 >
                   &times;
                 </button>
               </div>
 
-              <div className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200 space-y-4">
-                <form
-                  onSubmit={handleEnrollSingle}
-                  className="flex gap-2 items-end"
-                >
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Matrícula
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: 2023101"
-                      className="block w-full border rounded p-1.5 text-sm"
-                      value={enrollData.matricula}
-                      onChange={(e) =>
-                        setEnrollData({
-                          ...enrollData,
-                          matricula: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Nome do Aluno
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: João Silva"
-                      className="block w-full border rounded p-1.5 text-sm"
-                      value={enrollData.nome}
-                      onChange={(e) =>
-                        setEnrollData({ ...enrollData, nome: e.target.value })
-                      }
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition h-[34px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    Adicionar
-                  </button>
-                </form>
-
-                <hr className="border-gray-300" />
-
-                <form
-                  onSubmit={handleBulkEnroll}
-                  className="flex flex-col gap-2"
-                >
-                  <label className="block text-xs font-medium text-gray-600">
-                    Importar em Lote (CSV/XLSX com colunas &apos;matricula&apos;
-                    e &apos;nome&apos;)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="file"
-                      id="file-upload"
-                      accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                      onChange={(e) =>
-                        setBulkFile(e.target.files ? e.target.files[0] : null)
-                      }
-                      className="flex-1 block w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border rounded cursor-pointer"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!bulkFile || isSubmitting}
-                      className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              {activeTab === 'students' && (
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200 space-y-4 shrink-0">
+                    <form
+                      onSubmit={handleEnrollSingle}
+                      className="flex gap-2 items-end"
                     >
-                      Importar
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              <div className="flex-1 overflow-y-auto bg-white border rounded-lg max-h-[300px]">
-                {isLoadingStudents ? (
-                  <div className="flex items-center justify-center p-6 text-gray-500">
-                    <LoadingSpinner />{' '}
-                    <span className="ml-2 text-sm">Carregando alunos...</span>
-                  </div>
-                ) : classStudents.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-gray-500 italic">
-                    Nenhum aluno matriculado nesta turma.
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-gray-100">
-                    {classStudents.map((student) => (
-                      <li
-                        key={student.id}
-                        className="p-3 flex justify-between items-center hover:bg-gray-50"
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Matrícula
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex: 2023101"
+                          className="block w-full border rounded p-1.5 text-sm"
+                          value={enrollData.matricula}
+                          onChange={(e) =>
+                            setEnrollData({
+                              ...enrollData,
+                              matricula: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Nome do Aluno
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex: João Silva"
+                          className="block w-full border rounded p-1.5 text-sm"
+                          value={enrollData.nome}
+                          onChange={(e) =>
+                            setEnrollData({
+                              ...enrollData,
+                              nome: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition h-[34px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
                       >
+                        Adicionar
+                      </button>
+                    </form>
+
+                    <hr className="border-gray-300" />
+
+                    <form
+                      onSubmit={handleBulkEnroll}
+                      className="flex flex-col gap-2"
+                    >
+                      <label className="block text-xs font-medium text-gray-600">
+                        Importar em Lote (CSV/XLSX com colunas
+                        &apos;matricula&apos; e &apos;nome&apos;)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="file"
+                          id="file-upload"
+                          accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                          onChange={(e) =>
+                            setBulkFile(
+                              e.target.files ? e.target.files[0] : null,
+                            )
+                          }
+                          className="flex-1 block w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border rounded cursor-pointer"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!bulkFile || isSubmitting}
+                          className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          Importar
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-white border rounded-lg">
+                    {isLoadingStudents ? (
+                      <div className="flex items-center justify-center p-6 text-gray-500">
+                        <LoadingSpinner />{' '}
+                        <span className="ml-2 text-sm">
+                          Carregando alunos...
+                        </span>
+                      </div>
+                    ) : classStudents.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-gray-500 italic">
+                        Nenhum aluno matriculado nesta turma.
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-gray-100">
+                        {classStudents.map((student) => (
+                          <li
+                            key={student.id}
+                            className="p-3 flex justify-between items-center hover:bg-gray-50"
+                          >
+                            <div>
+                              <p className="font-medium text-gray-800 text-sm">
+                                {student.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Matrícula: {student.registration_number}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() =>
+                                handleRemoveEnrollment(student.id, student.name)
+                              }
+                              className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 rounded hover:bg-red-50 transition cursor-pointer"
+                            >
+                              Remover
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'metrics' && (
+                <div className="flex flex-col flex-1 overflow-hidden bg-gray-50 border rounded-lg p-4">
+                  {isLoadingMetrics ? (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                      <LoadingSpinner />
+                      <span className="mt-4 text-sm">
+                        Apurando métricas da turma...
+                      </span>
+                    </div>
+                  ) : classMetrics.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-center text-gray-500 italic p-6">
+                      Nenhum dado de submissão encontrado. A turma ainda não
+                      resolveu questões no sistema.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col h-full gap-4 overflow-hidden">
+                      <div className="bg-blue-100 p-4 rounded-lg flex justify-between items-center border border-blue-200 shrink-0 shadow-sm">
                         <div>
-                          <p className="font-medium text-gray-800 text-sm">
-                            {student.name}
+                          <p className="text-sm text-blue-800 font-bold mb-1">
+                            Taxa de Acerto Geral (Média)
                           </p>
-                          <p className="text-xs text-gray-500">
-                            Matrícula: {student.registration_number}
+                          <p className="text-3xl font-black text-blue-700">
+                            {avgClassAccuracy}%
                           </p>
                         </div>
-                        <button
-                          onClick={() =>
-                            handleRemoveEnrollment(student.id, student.name)
-                          }
-                          className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 rounded hover:bg-red-50 transition"
-                        >
-                          Remover
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-blue-900">
+                            Questões Engajadas:{' '}
+                            <span className="font-bold">
+                              {classMetrics.length}
+                            </span>
+                          </p>
+                          <p className="text-sm font-medium text-blue-900 mt-1">
+                            Total de Tentativas:{' '}
+                            <span className="font-bold">
+                              {totalClassAttempts}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                        <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                          Detalhamento por Questão
+                        </h4>
+                        {classMetrics.map((m) => (
+                          <div
+                            key={m.question_id}
+                            className="bg-white border p-3 rounded-lg shadow-sm flex flex-col gap-2"
+                          >
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-gray-800">
+                                Questão ID: {m.question_id}
+                              </span>
+                              <span
+                                className={`text-xs font-bold px-2 py-1 rounded ${
+                                  m.accuracy_percentage >= 70
+                                    ? 'bg-green-100 text-green-700'
+                                    : m.accuracy_percentage >= 40
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-red-100 text-red-700'
+                                }`}
+                              >
+                                {m.accuracy_percentage}% Acerto
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                              <div>
+                                <span className="font-semibold block text-gray-500">
+                                  Acertos / Alunos que tentaram:
+                                </span>
+                                {m.students_correct} de {m.students_attempted}
+                              </div>
+                              <div>
+                                <span className="font-semibold block text-gray-500">
+                                  Média de Tentativas:
+                                </span>
+                                {m.avg_attempts_per_student} por aluno
+                              </div>
+                              <div className="col-span-2">
+                                <span className="font-semibold block text-gray-500">
+                                  Tempo Médio de Resolução:
+                                </span>
+                                {m.avg_time_spent_seconds} segundos
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
