@@ -22,6 +22,17 @@ interface Question {
   is_special: boolean;
 }
 
+interface QuestionMetric {
+  question_id: number;
+  total_attempts: number;
+  correct_attempts: number;
+  accuracy_percentage: number;
+  avg_time_spent_seconds: number;
+  avg_attempts_per_student: number;
+  students_attempted: number;
+  students_correct: number;
+}
+
 interface Notification {
   message: string;
   type: 'success' | 'error' | 'warning';
@@ -33,6 +44,9 @@ export default function AdminDatabasesPage() {
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(
     null,
   );
+
+  const [metrics, setMetrics] = useState<Record<number, QuestionMetric>>({});
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,10 +95,43 @@ export default function AdminDatabasesPage() {
     }
   };
 
+  const loadMetrics = async (scenarioId: number) => {
+    setLoadingMetrics(true);
+    try {
+      const data = await AdminService.getGlobalMetrics({
+        scenario_id: scenarioId,
+      });
+      const metricsMap = data.reduce(
+        (acc: Record<number, QuestionMetric>, curr: QuestionMetric) => {
+          acc[curr.question_id] = curr;
+          return acc;
+        },
+        {},
+      );
+      setMetrics(metricsMap);
+    } catch (error: any) {
+      showNotification(
+        `Erro ao carregar métricas de desempenho. ${error}`,
+        'error',
+      );
+    } finally {
+      setLoadingMetrics(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (selectedScenario) {
+      loadMetrics(selectedScenario.id);
+    } else {
+      setMetrics({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedScenario?.id]);
 
   const handleSaveScenario = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,9 +237,9 @@ export default function AdminDatabasesPage() {
     }
   };
 
-  const scenarioQuestions = questions.filter(
-    (q) => q.scenario_database_id === selectedScenario?.id,
-  );
+  const scenarioQuestions = questions
+    .filter((q) => q.scenario_database_id === selectedScenario?.id)
+    .sort((a, b) => a.difficulty - b.difficulty);
 
   return (
     <ProtectedRoute>
@@ -310,9 +357,20 @@ export default function AdminDatabasesPage() {
 
               <div>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold text-gray-800">
-                    Questões ({scenarioQuestions.length})
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-gray-800">
+                      Questões ({scenarioQuestions.length})
+                    </h3>
+                    <button
+                      onClick={() => loadMetrics(selectedScenario.id)}
+                      disabled={loadingMetrics}
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                    >
+                      {loadingMetrics
+                        ? 'Atualizando...'
+                        : '↻ Atualizar Métricas'}
+                    </button>
+                  </div>
                   <button
                     onClick={() => {
                       setQuestionFormData({
@@ -336,62 +394,124 @@ export default function AdminDatabasesPage() {
                       Nenhuma questão cadastrada neste database.
                     </p>
                   )}
-                  {scenarioQuestions.map((q) => (
-                    <div
-                      key={q.id}
-                      className={`border rounded p-4 ${q.is_special ? 'border-purple-300 bg-purple-50' : 'bg-gray-50'}`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex gap-2 items-center">
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded font-bold ${
-                              q.difficulty <= 10
-                                ? 'bg-green-100 text-green-800'
-                                : q.difficulty <= 30
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                            }`}
+                  {scenarioQuestions.map((q) => {
+                    const qMetrics = metrics[q.id];
+
+                    return (
+                      <div
+                        key={q.id}
+                        className={`border rounded flex flex-col overflow-hidden ${q.is_special ? 'border-purple-300' : 'border-gray-200'}`}
+                      >
+                        <div
+                          className={`p-4 ${q.is_special ? 'bg-purple-50' : 'bg-white'}`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex gap-2 items-center">
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded font-bold ${
+                                  q.difficulty <= 10
+                                    ? 'bg-green-100 text-green-800'
+                                    : q.difficulty <= 30
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                Questão {q.difficulty}
+                              </span>
+                              {q.is_special && (
+                                <span className="text-xs px-2 py-0.5 rounded font-bold bg-purple-200 text-purple-800">
+                                  Especial
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setQuestionFormData({
+                                    id: q.id,
+                                    statement: q.statement,
+                                    expected_query: q.expected_query,
+                                    difficulty: q.difficulty,
+                                    is_special: q.is_special,
+                                  });
+                                  setIsQuestionModalOpen(true);
+                                }}
+                                className="text-blue-600 hover:underline text-sm font-medium cursor-pointer"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteQuestion(q.id)}
+                                className="text-red-600 hover:underline text-sm font-medium cursor-pointer"
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-sm font-medium text-gray-800 mb-3">
+                            {q.statement}
+                          </p>
+
+                          <div
+                            className="bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-md text-sm font-mono overflow-x-auto whitespace-pre-wrap shadow-inner"
+                            style={{ fontVariantLigatures: 'none' }}
                           >
-                            Nível {q.difficulty}
-                          </span>
-                          {q.is_special && (
-                            <span className="text-xs px-2 py-0.5 rounded font-bold bg-purple-200 text-purple-800">
-                              Especial
-                            </span>
+                            {q.expected_query}
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-100 border-t border-gray-200 p-3 flex flex-col gap-2">
+                          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                            Desempenho da Questão
+                          </p>
+                          {qMetrics ? (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div>
+                                <p className="text-[10px] text-gray-500">
+                                  Taxa de Acerto
+                                </p>
+                                <p
+                                  className={`text-sm font-bold ${qMetrics.accuracy_percentage > 60 ? 'text-green-600' : qMetrics.accuracy_percentage > 30 ? 'text-yellow-600' : 'text-red-600'}`}
+                                >
+                                  {qMetrics.accuracy_percentage}%
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500">
+                                  Tentativas (Total / Corretas)
+                                </p>
+                                <p className="text-sm font-bold text-gray-700">
+                                  {qMetrics.total_attempts} /{' '}
+                                  {qMetrics.correct_attempts}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500">
+                                  Alunos (Tentaram / Acertaram)
+                                </p>
+                                <p className="text-sm font-bold text-gray-700">
+                                  {qMetrics.students_attempted} /{' '}
+                                  {qMetrics.students_correct}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500">
+                                  Tempo Médio Gasto
+                                </p>
+                                <p className="text-sm font-bold text-gray-700">
+                                  {qMetrics.avg_time_spent_seconds}s
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-500 italic">
+                              Sem submissões registradas até o momento.
+                            </p>
                           )}
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setQuestionFormData({
-                                id: q.id,
-                                statement: q.statement,
-                                expected_query: q.expected_query,
-                                difficulty: q.difficulty,
-                                is_special: q.is_special,
-                              });
-                              setIsQuestionModalOpen(true);
-                            }}
-                            className="text-blue-600 hover:underline text-sm font-medium cursor-pointer"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => handleDeleteQuestion(q.id)}
-                            className="text-red-600 hover:underline text-sm font-medium cursor-pointer"
-                          >
-                            Excluir
-                          </button>
-                        </div>
                       </div>
-                      <p className="text-sm font-medium text-gray-800 mb-2">
-                        {q.statement}
-                      </p>
-                      <div className="bg-gray-800 text-green-400 p-2 rounded text-xs font-mono overflow-x-auto">
-                        {q.expected_query}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -469,7 +589,7 @@ export default function AdminDatabasesPage() {
       )}
 
       {isQuestionModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl">
             <h2 className="text-2xl font-bold mb-4">
               {questionFormData.id ? 'Editar Questão' : 'Nova Questão'}
@@ -500,7 +620,8 @@ export default function AdminDatabasesPage() {
                 <textarea
                   required
                   rows={4}
-                  className="mt-1 block w-full border rounded p-2 font-mono text-sm bg-gray-50"
+                  className="mt-1 block w-full border rounded p-2 font-mono text-sm bg-gray-50 whitespace-pre-wrap"
+                  style={{ fontVariantLigatures: 'none' }}
                   value={questionFormData.expected_query}
                   onChange={(e) =>
                     setQuestionFormData({
@@ -514,7 +635,7 @@ export default function AdminDatabasesPage() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700">
-                    Nível de Dificuldade (1 a 100)
+                    Número da Questão
                   </label>
                   <input
                     type="number"
