@@ -206,22 +206,22 @@ class SubmissionService:
         try:
             with Session() as session:
                 submission = Submission(
-                    student_id=student_id,
-                    question_id=question_id,
-                    time_spent_seconds=time_spent,
-                    submitted_query=submitted_query,
-                    is_correct=is_correct,
+                    student_id=int(student_id),
+                    question_id=int(question_id),
+                    time_spent_seconds=int(time_spent) if time_spent else 0,
+                    submitted_query=str(submitted_query),
+                    is_correct=bool(is_correct),
                     execution_output=json.dumps(output) if output else None
                 )
                 session.add(submission)
                 session.commit()
                 return True, "Submissão salva com sucesso."
-        except SQLAlchemyError as e:
-            return False, f"Erro ao salvar submissão: {str(e)}"
-
+        except Exception as e:
+            return False, f"Erro ao salvar: {str(e)}"
+    
     @staticmethod
     def check_special_completion(student_id, scenario_id):
-        """Verifica se o aluno comletou as 10 questões especiais do cenário."""
+        """Verifica se o aluno completou as 10 questões especiais do cenário."""
         try:
             with Session() as session:
                 special_questions = session.query(Question).filter_by(
@@ -243,12 +243,31 @@ class SubmissionService:
         except SQLAlchemyError as e:
             return False, f"Erro ao verificar progresso: {str(e)}"
 
+    @staticmethod
+    def skip_question(student_id, question_id):
+        """Salva uma desistência como 'correta' para liberar o progresso, mas com query marcada."""
+        try:
+            with Session() as session:
+                submission = Submission(
+                    student_id=student_id,
+                    question_id=question_id,
+                    time_spent_seconds=120,
+                    submitted_query="-- DESISTÊNCIA",
+                    is_correct=True,
+                    execution_output=json.dumps({"msg": "Pulou a questão"})
+                )
+                session.add(submission)
+                session.commit()
+                return True, "Questão pulada com sucesso."
+        except SQLAlchemyError as e:
+            return False, f"Erro ao pular: {str(e)}"
+
+
 class SupabaseService:
     """Gerencia conexoes e execução de queries RPC no Supabase."""
 
     @staticmethod
     def get_client(slug):
-        """Cria o cliente Supabase dinamicamente com base no slug."""
         suffix = slug.upper().replace('-', '_')
         url = os.getenv(f"SUPABASE_URL_{suffix}")
         key = os.getenv(f"SUPABASE_KEY_{suffix}")
@@ -353,7 +372,6 @@ class SQLGrader:
         if df_base.empty and df_stu.empty:
             return True, "Parabens! As consultas sao equivalentes."
         
-        # Normalização
         df_base_norm = SQLGrader._normalize_df(df_base)
         df_stu_norm = SQLGrader._normalize_df(df_stu)
 

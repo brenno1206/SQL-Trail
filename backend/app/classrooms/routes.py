@@ -1,5 +1,5 @@
 from flask import request, jsonify, Blueprint
-from flask_jwt_extended import get_jwt, get_jwt_identity
+from flask_jwt_extended import get_jwt
 from .services import ClassroomService
 from app.auth.decorators import role_required 
 import pandas as pd # type: ignore
@@ -67,7 +67,9 @@ def get_my_classes_as_teacher():
     """
     Rota para listar todas as turmas cujo dono é o professor logado.
     """
-    teacher_id = get_jwt_identity() 
+    claims = get_jwt()
+    teacher_id = claims.get('user_id') 
+    
     success, result = ClassroomService.get_classes_by_teacher(teacher_id)
     if success:
         return jsonify([serialize_class(c) for c in result]), 200
@@ -79,7 +81,9 @@ def get_my_classes_as_student():
     """
     Rota para listar todas as turmas nas quais o aluno logado está matriculado.
     """
-    student_id = get_jwt_identity() 
+    claims = get_jwt()
+    student_id = claims.get('user_id') 
+    
     success, result = ClassroomService.get_classes_for_student(student_id)
     if success:
         return jsonify([serialize_class(c) for c in result]), 200
@@ -96,8 +100,8 @@ def create_class():
     Se o usuário logado for professor, a turma será atribuída a ele.
     Se for admin, o ID do professor ('teacher_id') deve ser enviado no JSON.
     """
-    current_user_id = get_jwt_identity() 
     claims = get_jwt()
+    current_user_id = claims.get('user_id') 
     user_role = claims.get('role')
     
     data = request.get_json() or {}
@@ -124,8 +128,8 @@ def update_class(class_id):
     """
     Rota para atualizar os dados de uma turma. Apenas o dono ou admin pode fazê-lo.
     """
-    current_user_id = get_jwt_identity()
     claims = get_jwt()
+    current_user_id = claims.get('user_id')
     
     if claims.get('role') == 'teacher':
         if not ClassroomService.verify_class_ownership(class_id, current_user_id):
@@ -144,8 +148,8 @@ def delete_class(class_id):
     """
     Rota para deletar uma turma existente. Apenas o dono ou admin pode fazê-lo.
     """
-    current_user_id = get_jwt_identity()
     claims = get_jwt()
+    current_user_id = claims.get('user_id')
     
     if claims.get('role') == 'teacher':
         if not ClassroomService.verify_class_ownership(class_id, current_user_id):
@@ -165,8 +169,8 @@ def enroll_single_student(class_id):
     """
     Rota para matricular um único aluno na turma. Busca ou cria o aluno.
     """
-    current_user_id = get_jwt_identity()
     claims = get_jwt()
+    current_user_id = claims.get('user_id')
     
     if claims.get('role') == 'teacher':
         if not ClassroomService.verify_class_ownership(class_id, current_user_id):
@@ -194,8 +198,8 @@ def enroll_students_bulk(class_id):
     """
     Rota para ler um arquivo CSV/XLSX, criar e matricular múltiplos alunos.
     """
-    current_user_id = get_jwt_identity()
     claims = get_jwt()
+    current_user_id = claims.get('user_id')
     
     if claims.get('role') == 'teacher':
         if not ClassroomService.verify_class_ownership(class_id, current_user_id):
@@ -239,8 +243,8 @@ def unenroll_student(class_id, student_id):
     """
     Rota para desmatricular um aluno de uma turma. Apenas professor proprietário ou admin.
     """
-    current_user_id = get_jwt_identity()
     claims = get_jwt()
+    current_user_id = claims.get('user_id')
     
     if claims.get('role') == 'teacher':
         if not ClassroomService.verify_class_ownership(class_id, current_user_id):
@@ -257,8 +261,8 @@ def get_students_in_class(class_id):
     """
     Rota para listar todos os alunos de uma turma específica.
     """
-    current_user_id = get_jwt_identity()
     claims = get_jwt()
+    current_user_id = claims.get('user_id')
     
     if claims.get('role') == 'teacher':
         if not ClassroomService.verify_class_ownership(class_id, current_user_id):

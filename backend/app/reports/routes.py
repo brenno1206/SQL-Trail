@@ -1,11 +1,9 @@
 from flask import request, jsonify, Blueprint
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt
 from .services import ReportService
 from app.auth.decorators import role_required
 
 reports_bp = Blueprint('reports', __name__)
-
-# --- FUNÇÕES AUXILIARES ---
 
 def serialize_submission_report(s):
     if not s: return None
@@ -50,11 +48,9 @@ def get_global_metrics():
 @reports_bp.route('/me/submissions/correct/latest', methods=['GET'])
 @role_required('student')
 def get_my_latest_correct_submissions():
-    """
-    Retorna a última submissão correta do usuário logado.
-    Filtros opcionais: ?scenario_id=2 & question_id=5
-    """
-    student_id = get_jwt_identity()
+    claims = get_jwt()
+    student_id = claims.get('user_id')
+    
     scenario_id = request.args.get('scenario_id', type=int)
     question_id = request.args.get('question_id', type=int)
 
@@ -74,7 +70,8 @@ def get_my_question_engagement(question_id):
     """
     Retorna o total de tentativas e tempo gasto pelo usuário logado em uma questão específica.
     """
-    student_id = get_jwt_identity()
+    claims = get_jwt()
+    student_id = claims.get('user_id')
     
     success, result = ReportService.get_user_question_engagement(student_id, question_id)
     if success:
@@ -88,7 +85,8 @@ def get_my_progress():
     Retorna a quantidade total de questões e quantas o aluno resolveu.
     Filtro opcional: ?scenario_id=1
     """
-    student_id = get_jwt_identity()
+    claims = get_jwt()
+    student_id = claims.get('user_id')
     scenario_id = request.args.get('scenario_id', type=int)
 
     success, result = ReportService.get_progress_summary(student_id, scenario_id)
@@ -122,4 +120,19 @@ def get_student_question_engagement(student_id, question_id):
     success, result = ReportService.get_user_question_engagement(student_id, question_id)
     if success:
         return jsonify(result), 200
+    return jsonify(result), 500
+
+@reports_bp.route('/classes/<int:class_id>/questions/details', methods=['GET'])
+@role_required('admin', 'teacher')
+def get_class_questions_detail(class_id):
+    """
+    Retorna o detalhamento por questão de uma turma específica.
+    Mostra quais alunos acertaram, erraram, o tempo que levaram e métricas como 
+    taxa de acerto e tentativas médias antes do acerto.
+    """
+    success, result = ReportService.get_class_questions_detail(class_id)
+    
+    if success:
+        return jsonify(result), 200
+    
     return jsonify(result), 500

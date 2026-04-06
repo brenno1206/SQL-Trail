@@ -1,5 +1,5 @@
 from flask import request, jsonify, Blueprint
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, get_jwt
 from .services import ScenarioDatabaseService, QuestionService, SubmissionService, SupabaseService, SQLGrader
 from app.auth.decorators import role_required
 
@@ -9,7 +9,7 @@ def serialize_question(q):
     return {
         "id": q.id,
         "scenario_database_id": q.scenario_database_id,
-        "statement": q.statement,
+        "enunciado": q.statement,
         "expected_query": q.expected_query,
         "difficulty": q.difficulty,
         "is_special": q.is_special
@@ -171,12 +171,13 @@ def check_special_completion(slug):
     return jsonify({"error": result}), 500
 
 
-# --- ROTA DE VALIDAÇÃO (COMPARAÇÃO + SALVAMENTO) ---
+# --- ROTA DE VALIDAÇÃO ---
 
 @bp.route('/validate', methods=['POST'])
 @role_required('student')
 def validate():
-    student_id = get_jwt_identity()
+    claims = get_jwt()
+    student_id = claims.get('user_id')
     data = request.get_json() or {}
     slug = data.get('slug')
     q_id = data.get('question_id')
@@ -186,7 +187,6 @@ def validate():
     if not all([slug, q_id]):
         return jsonify({'valid': False, 'error': 'Parâmetros slug e question_id são obrigatórios.'}), 400
 
-    # Puxar a questão do banco de dados TiDB
     success_q, question_data = QuestionService.get_question_by_id(q_id)
     if not success_q:
         return jsonify({'valid': False, 'error': 'Questão não encontrada.'}), 404
@@ -194,7 +194,6 @@ def validate():
     enunciado = question_data.statement
     expected_sql = question_data.expected_query
 
-    # Validações da Consulta do Aluno
     if not student_sql:
         return jsonify({'valid': False, 'error': 'Sua consulta está em branco.', 'enunciado': enunciado}), 400
     
@@ -202,15 +201,12 @@ def validate():
     if not is_safe:
         return jsonify({'valid': False, 'error': safe_msg, 'enunciado': enunciado}), 200
 
-    # Configuração do Supabase
     client = SupabaseService.get_client(slug)
     if not client:
         return jsonify({'error': f'Credenciais para o slug {slug} não encontradas.'}), 404
 
-    # Execução das Queries
     stu_res = SupabaseService.execute_query(client, student_sql, max_rows=0)
     if stu_res.get('error'):
-        # Salva o erro como submissão incorreta
         SubmissionService.save_submission(student_id, q_id, time_spent, student_sql, False, stu_res['error'])
         return jsonify({'valid': False, 'error': stu_res['error'], 'enunciado': enunciado}), 200
         
@@ -218,12 +214,11 @@ def validate():
     if base_res.get('error'):
         return jsonify({'valid': False, 'error': f"Erro na base: {base_res['error']}", 'enunciado': enunciado}), 500
 
-    # Comparação e Resposta Final
     is_valid, msg = SQLGrader.compare(expected_sql, student_sql, base_res, stu_res)
     
-    # Salvar a Submissão no Banco (TiDB)
-    SubmissionService.save_submission(student_id, q_id, time_spent, student_sql, is_valid, msg)
-    
+    success_save, save_msg = SubmissionService.save_submission(student_id, q_id, time_spent, student_sql, is_valid, msg)
+    if not success_save:
+        return jsonify({'valid': False, 'error': f"Erro ao salvar submissão: {save_msg}", 'enunciado': enunciado}), 500
     return jsonify({
         'valid': is_valid,
         'message': msg if is_valid else None,
@@ -232,6 +227,17 @@ def validate():
         'result_table': stu_res,
         'expected_table': base_res
     }), 200
+
+@bp.route('/validate/skip', methods=['POST'])
+@role_required('student')
+def skip_question_route():
+    student_id = get_jwt_identity()
+    data = request.get_json() or {}
+    q_id = data.get('question_id')
+    
+    success, msg = SubmissionService.skip_question(student_id, q_id)
+    if success: return jsonify({"valid": True, "message": msg}), 200
+    return jsonify({"error": msg}), 400
 
 @bp.route('/validate/testing', methods=['POST'])
 @role_required('teacher', 'admin')
