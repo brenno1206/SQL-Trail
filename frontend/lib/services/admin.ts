@@ -238,7 +238,7 @@ export const AdminService = {
     statement: string;
     expected_query: string;
     difficulty: number;
-    is_special?: boolean;
+    is_special: boolean;
   }) => {
     const response = await api.post('/questions', questionData);
     return response.data;
