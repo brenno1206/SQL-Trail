@@ -1,125 +1,21 @@
 import { api } from '@/lib/api';
 
-export const AdminService = {
-  // ==========================
-  // ADMIN CRUD
-  // ==========================
-  createAdmin: async (adminData: {
-    name: string;
-    email: string;
-    password?: string;
-  }) => {
-    const response = await api.post('/auth/admin', adminData);
-    return response.data;
-  },
-
-  editAdmin: async (
-    adminId: number,
-    adminData: {
-      name?: string;
-      email?: string;
-      password?: string;
-    },
-  ) => {
-    const response = await api.put(`/auth/admin/${adminId}`, adminData);
-    return response.data;
-  },
-
-  deleteAdmin: async (adminId: number) => {
-    const response = await api.delete(`/auth/admin/${adminId}`);
-    return response.data;
-  },
-
-  getAdmin: async (adminId: number) => {
-    const response = await api.get(`/auth/admin/${adminId}`);
-    return response.data;
-  },
-
-  getAllAdmins: async () => {
-    const response = await api.get('/auth/admins');
-    return response.data;
-  },
-
-  // ==========================
-  // TEACHER CRUD
-  // ==========================
-  getAllTeachers: async () => {
-    const response = await api.get('/auth/teachers');
-    return response.data;
-  },
-
-  createTeacher: async (teacherData: {
-    registration_number: string;
-    name: string;
-    email: string;
-    password?: string;
-  }) => {
-    const response = await api.post('/auth/teacher', teacherData);
-    return response.data;
-  },
-
-  editTeacher: async (
-    teacherId: number,
-    teacherData: {
-      registration_number?: string;
-      name?: string;
-      email?: string;
-      password?: string;
-    },
-  ) => {
-    const response = await api.put(`/auth/teacher/${teacherId}`, teacherData);
-    return response.data;
-  },
-
-  deleteTeacher: async (teacherId: number) => {
-    const response = await api.delete(`/auth/teacher/${teacherId}`);
-    return response.data;
-  },
-
-  // ==========================
-  // STUDENT CRUD
-  // ==========================
-  getAllStudents: async () => {
-    const response = await api.get('/auth/students');
-    return response.data;
-  },
-
-  createStudent: async (studentData: {
-    registration_number: string;
-    name: string;
-  }) => {
-    const response = await api.post('/auth/student', studentData);
-    return response.data;
-  },
-
-  editStudent: async (
-    studentId: number,
-    studentData: {
-      registration_number?: string;
-      name?: string;
-      password?: string;
-    },
-  ) => {
-    const response = await api.put(`/auth/student/${studentId}`, studentData);
-    return response.data;
-  },
-
-  deleteStudent: async (studentId: number) => {
-    const response = await api.delete(`/auth/student/${studentId}`);
-    return response.data;
-  },
-
+export const teacherService = {
   // ==========================
   // CLASS CRUD
   // ==========================
-  getAllClasses: async () => {
-    const response = await api.get('/classrooms/');
+  getMyClasses: async () => {
+    const response = await api.get('/classrooms/my-classes/teacher');
+    return response.data;
+  },
+
+  getClass: async (classId: number) => {
+    const response = await api.get(`/classrooms/${classId}`);
     return response.data;
   },
 
   createClass: async (classData: {
     class_name: string;
-    teacher_id: number;
     subject: string;
     year_semester: string;
   }) => {
@@ -233,6 +129,21 @@ export const AdminService = {
     return response.data;
   },
 
+  getQuestionsByScenario: async (slug: string) => {
+    const response = await api.get(`/questions/${slug}`);
+    return response.data;
+  },
+
+  getSpecialQuestions: async (slug: string) => {
+    const response = await api.get(`/questions/${slug}/special`);
+    return response.data;
+  },
+
+  getNotSpecialQuestions: async (slug: string) => {
+    const response = await api.get(`/questions/${slug}/not-special`);
+    return response.data;
+  },
+
   createQuestion: async (questionData: {
     scenario_database_id: number;
     statement: string;
@@ -254,7 +165,7 @@ export const AdminService = {
     questionData: {
       statement?: string;
       expected_query?: string;
-      difficulty: number;
+      difficulty?: number;
       is_special?: boolean;
     },
   ) => {
