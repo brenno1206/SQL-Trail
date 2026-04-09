@@ -85,7 +85,7 @@ class ScenarioDatabaseService:
 
 class QuestionService:
     """Gerencia o CRUD das questões no banco de dados TiDB."""
-    
+
     @staticmethod
     def create_question(data):
         try:
@@ -94,7 +94,7 @@ class QuestionService:
                     scenario_database_id=data.get('scenario_database_id'),
                     statement=data.get('statement'),
                     expected_query=data.get('expected_query'),
-                    difficulty=data.get('difficulty'),
+                    question_number=data.get('question_number'),
                     is_special=data.get('is_special', False)
                 )
                 session.add(question)
@@ -173,16 +173,18 @@ class QuestionService:
                 
                 if 'statement' in data: question.statement = data['statement']
                 if 'expected_query' in data: question.expected_query = data['expected_query']
-                if 'difficulty' in data: question.difficulty = data['difficulty']
+                if 'question_number' in data: question.question_number = data['question_number']
                 if 'is_special' in data: question.is_special = data['is_special']
                 
+                session.query(Submission).filter_by(question_id=question_id).delete()
                 session.commit()
                 session.refresh(question)
                 session.expunge(question)
+                
                 return True, question
         except SQLAlchemyError as e:
             return False, f"Erro ao atualizar questão: {str(e)}"
-
+    
     @staticmethod
     def delete_question(question_id):
         try:
@@ -191,12 +193,12 @@ class QuestionService:
                 if not question:
                     return False, "Questão não encontrada."
                 
+                session.query(Submission).filter_by(question_id=question_id).delete()
                 session.delete(question)
                 session.commit()
-                return True, "Questão deletada com sucesso."
+                return True, "Questão e submissões deletadas com sucesso."
         except SQLAlchemyError as e:
             return False, f"Erro ao deletar questão: {str(e)}"
-
 
 class SubmissionService:
     """Gerencia as submissões dos alunos e verifica progresso."""
@@ -251,17 +253,17 @@ class SubmissionService:
                 submission = Submission(
                     student_id=student_id,
                     question_id=question_id,
-                    time_spent_seconds=120,
-                    submitted_query="-- DESISTÊNCIA",
+                    time_spent_seconds=0,
+                    submitted_query="SKIP",
                     is_correct=True,
-                    execution_output=json.dumps({"msg": "Pulou a questão"})
+                    execution_output=json.dumps({"msg": "Pulou"})
                 )
                 session.add(submission)
                 session.commit()
-                return True, "Questão pulada com sucesso."
+                return True, "Sucesso."
         except SQLAlchemyError as e:
-            return False, f"Erro ao pular: {str(e)}"
-
+            session.rollback()
+            return False, str(e)
 
 class SupabaseService:
     """Gerencia conexoes e execução de queries RPC no Supabase."""

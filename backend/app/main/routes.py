@@ -9,9 +9,9 @@ def serialize_question(q):
     return {
         "id": q.id,
         "scenario_database_id": q.scenario_database_id,
-        "enunciado": q.statement,
+        "statement": q.statement,
         "expected_query": q.expected_query,
-        "difficulty": q.difficulty,
+        "question_number": q.question_number,
         "is_special": q.is_special
     }
 
@@ -191,15 +191,15 @@ def validate():
     if not success_q:
         return jsonify({'valid': False, 'error': 'Questão não encontrada.'}), 404
 
-    enunciado = question_data.statement
+    statement = question_data.statement
     expected_sql = question_data.expected_query
 
     if not student_sql:
-        return jsonify({'valid': False, 'error': 'Sua consulta está em branco.', 'enunciado': enunciado}), 400
+        return jsonify({'valid': False, 'error': 'Sua consulta está em branco.', 'statement': statement}), 400
     
     is_safe, safe_msg = SQLGrader.is_safe_query(student_sql)
     if not is_safe:
-        return jsonify({'valid': False, 'error': safe_msg, 'enunciado': enunciado}), 200
+        return jsonify({'valid': False, 'error': safe_msg, 'statement': statement}), 200
 
     client = SupabaseService.get_client(slug)
     if not client:
@@ -208,22 +208,22 @@ def validate():
     stu_res = SupabaseService.execute_query(client, student_sql, max_rows=0)
     if stu_res.get('error'):
         SubmissionService.save_submission(student_id, q_id, time_spent, student_sql, False, stu_res['error'])
-        return jsonify({'valid': False, 'error': stu_res['error'], 'enunciado': enunciado}), 200
+        return jsonify({'valid': False, 'error': stu_res['error'], 'statement': statement}), 200
         
     base_res = SupabaseService.execute_query(client, expected_sql, max_rows=0)
     if base_res.get('error'):
-        return jsonify({'valid': False, 'error': f"Erro na base: {base_res['error']}", 'enunciado': enunciado}), 500
+        return jsonify({'valid': False, 'error': f"Erro na base: {base_res['error']}", 'statement': statement}), 500
 
     is_valid, msg = SQLGrader.compare(expected_sql, student_sql, base_res, stu_res)
     
     success_save, save_msg = SubmissionService.save_submission(student_id, q_id, time_spent, student_sql, is_valid, msg)
     if not success_save:
-        return jsonify({'valid': False, 'error': f"Erro ao salvar submissão: {save_msg}", 'enunciado': enunciado}), 500
+        return jsonify({'valid': False, 'error': f"Erro ao salvar submissão: {save_msg}", 'statement': statement}), 500
     return jsonify({
         'valid': is_valid,
         'message': msg if is_valid else None,
         'error': msg if not is_valid else None,
-        'enunciado': enunciado,
+        'statement': statement,
         'result_table': stu_res,
         'expected_table': base_res
     }), 200
@@ -231,11 +231,12 @@ def validate():
 @bp.route('/validate/skip', methods=['POST'])
 @role_required('student')
 def skip_question_route():
-    student_id = get_jwt_identity()
+    claims = get_jwt()
+    student_id = claims.get('user_id')
     data = request.get_json() or {}
-    q_id = data.get('question_id')
+    question_id = data.get('question_id')
     
-    success, msg = SubmissionService.skip_question(student_id, q_id)
+    success, msg = SubmissionService.skip_question(student_id, question_id)
     if success: return jsonify({"valid": True, "message": msg}), 200
     return jsonify({"error": msg}), 400
 
@@ -254,15 +255,15 @@ def validate_testing():
     if not success_q:
         return jsonify({'valid': False, 'error': 'Questão não encontrada.'}), 404
 
-    enunciado = question_data.statement
+    statement = question_data.statement
     expected_sql = question_data.expected_query
 
     if not testing_sql:
-        return jsonify({'valid': False, 'error': 'Sua consulta está em branco.', 'enunciado': enunciado}), 400
+        return jsonify({'valid': False, 'error': 'Sua consulta está em branco.', 'statement': statement}), 400
     
     is_safe, safe_msg = SQLGrader.is_safe_query(testing_sql)
     if not is_safe:
-        return jsonify({'valid': False, 'error': safe_msg, 'enunciado': enunciado}), 200
+        return jsonify({'valid': False, 'error': safe_msg, 'statement': statement}), 200
 
     client = SupabaseService.get_client(slug)
     if not client:
@@ -270,10 +271,10 @@ def validate_testing():
 
     testing_res = SupabaseService.execute_query(client, testing_sql, max_rows=0)
     if testing_res.get('error'):
-        return jsonify({'valid': False, 'error': testing_res['error'], 'enunciado': enunciado}), 200      
+        return jsonify({'valid': False, 'error': testing_res['error'], 'statement': statement}), 200      
     base_res = SupabaseService.execute_query(client, expected_sql, max_rows=0)
     if base_res.get('error'):
-        return jsonify({'valid': False, 'error': f"Erro na base: {base_res['error']}", 'enunciado': enunciado}), 500
+        return jsonify({'valid': False, 'error': f"Erro na base: {base_res['error']}", 'statement': statement}), 500
 
     is_valid, msg = SQLGrader.compare(expected_sql, testing_sql, base_res, testing_res)
     
@@ -281,7 +282,7 @@ def validate_testing():
         'valid': is_valid,
         'message': msg if is_valid else None,
         'error': msg if not is_valid else None,
-        'enunciado': enunciado,
+        'statement': statement,
         'result_table': testing_res,
         'expected_table': base_res
     }), 200

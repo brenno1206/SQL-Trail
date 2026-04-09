@@ -56,13 +56,9 @@ class Question(Base):
     scenario_database_id = Column(Integer, ForeignKey('scenario_databases.id', ondelete='CASCADE'), nullable=False)
     statement = Column(Text, nullable=False)
     expected_query = Column(Text, nullable=False)
-    difficulty = Column(Integer, nullable=False)
+    question_number = Column(Integer, nullable=False)
     is_special = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP, server_default=text('CURRENT_TIMESTAMP'))
-    
-    __table_args__ = (
-        CheckConstraint('difficulty >= 1 AND difficulty <= 100', name='check_difficulty_range'),
-    )
 
 class Submission(Base):
     __tablename__ = 'submissions'

@@ -10,29 +10,17 @@ class ReportService:
 
     @staticmethod
     def get_question_metrics(scenario_id=None, class_id=None, year_semester=None, question_id=None):
-        """
-        Retorna métricas agregadas das questões. Cobre: porcentagem de acerto, tempo médio, 
-        tentativas médias e quantidade de alunos (tentaram/acertaram).
-        Pode ser filtrado por cenário, turma, semestre ou uma questão específica.
-        
-        Parâmetros:
-            scenario_id (int, opcional): ID do banco de dados (trilha).
-            class_id (int, opcional): ID da turma.
-            year_semester (str, opcional): Semestre/Ano da turma (ex: "2026/1").
-            question_id (int, opcional): ID de uma questão específica.
-            
-        Retorno:
-            tuple: (True, lista de dicionários com as métricas) ou (False, dict de erro).
-        """
         try:
             with Session() as session:
+                is_truly_correct = (Submission.is_correct == True) & (Submission.submitted_query != 'SKIP')
+
                 query = session.query(
                     Submission.question_id,
                     func.count(Submission.id).label('total_attempts'),
-                    func.sum(case((Submission.is_correct == True, 1), else_=0)).label('correct_attempts'),
+                    func.sum(case((is_truly_correct, 1), else_=0)).label('correct_attempts'),
                     func.avg(Submission.time_spent_seconds).label('avg_time_spent'),
                     func.count(distinct(Submission.student_id)).label('students_attempted'),
-                    func.count(distinct(case((Submission.is_correct == True, Submission.student_id), else_=None))).label('students_correct')
+                    func.count(distinct(case((is_truly_correct, Submission.student_id), else_=None))).label('students_correct')
                 ).join(Question, Submission.question_id == Question.id)
 
                 if class_id or year_semester:
@@ -73,18 +61,6 @@ class ReportService:
 
     @staticmethod
     def get_user_last_correct_submissions(student_id, question_id=None, scenario_id=None):
-        """
-        Retorna a última submissão correta de um aluno. Pode ser de todas as questões,
-        de um cenário específico, ou de apenas uma questão.
-        
-        Parâmetros:
-            student_id (int): ID do aluno.
-            question_id (int, opcional): Filtrar por uma questão específica.
-            scenario_id (int, opcional): Filtrar por um cenário específico.
-            
-        Retorno:
-            tuple: (True, lista de submissões) ou (False, dict de erro).
-        """
         if not student_id:
             return False, {"error": "ID do aluno é obrigatório."}
 
@@ -92,7 +68,8 @@ class ReportService:
             with Session() as session:
                 subquery = session.query(func.max(Submission.id).label('max_id')).filter(
                     Submission.student_id == student_id,
-                    Submission.is_correct == True
+                    Submission.is_correct == True,
+                    Submission.submitted_query != 'SKIP'
                 ).group_by(Submission.question_id).subquery()
 
                 query = session.query(Submission).join(subquery, Submission.id == subquery.c.max_id)
@@ -112,17 +89,6 @@ class ReportService:
 
     @staticmethod
     def get_user_question_engagement(student_id, question_id):
-        """
-        Retorna a quantidade de tentativas e o tempo total/médio gasto por um usuário 
-        em uma questão específica.
-        
-        Parâmetros:
-            student_id (int): ID do aluno.
-            question_id (int): ID da questão.
-            
-        Retorno:
-            tuple: (True, dict com os dados) ou (False, dict de erro).
-        """
         if not student_id or not question_id:
             return False, {"error": "IDs de aluno e questão são obrigatórios."}
 
@@ -162,7 +128,8 @@ class ReportService:
                 if student_id:
                     s_query = session.query(func.count(distinct(Submission.question_id))).filter(
                         Submission.student_id == student_id,
-                        Submission.is_correct == True
+                        Submission.is_correct == True,
+                        Submission.submitted_query != 'SKIP'
                     )
                     
                     time_query = session.query(func.sum(Submission.time_spent_seconds)).filter(
@@ -189,11 +156,6 @@ class ReportService:
 
     @staticmethod
     def get_class_questions_detail(class_id):
-        """
-        Retorna um relatório detalhado por questão para uma turma específica.
-        Inclui os alunos que acertaram, o tempo gasto no acerto, quantas tentativas
-        foram necessárias e métricas gerais da questão para a turma.
-        """
         if not class_id:
             return False, {"error": "ID da turma é obrigatório."}
 
@@ -205,7 +167,8 @@ class ReportService:
                     Submission.student_id,
                     Submission.is_correct,
                     Submission.time_spent_seconds,
-                    getattr(Submission, 'timestamp', None)
+                    Submission.submitted_query,
+                    Submission.submitted_at
                 ).join(
                     Enrollment, Submission.student_id == Enrollment.student_id
                 ).filter(
@@ -244,17 +207,17 @@ class ReportService:
                     student_data = q_data["students_data"][s_id]
                     student_data["total_attempts"] += 1
 
-                    if sub.is_correct and not student_data["is_correct"]:
+                    is_real_success = sub.is_correct and sub.submitted_query != 'SKIP'
+
+                    if is_real_success and not student_data["is_correct"]:
                         student_data["is_correct"] = True
                         student_data["correct_time_spent_seconds"] = sub.time_spent_seconds
-                        
-                        if hasattr(sub, 'timestamp') and sub.timestamp:
-                            student_data["correct_timestamp"] = sub.timestamp.isoformat()
-
+                        if sub.submitted_at:
+                            student_data["correct_timestamp"] = sub.submitted_at.isoformat()
+            
                 final_report = []
                 for q_id, q_data in questions_report.items():
                     students_list = list(q_data["students_data"].values())
-                    
                     correct_students = [s for s in students_list if s["is_correct"]]
                     incorrect_students = [s for s in students_list if not s["is_correct"]]
                     
@@ -284,3 +247,41 @@ class ReportService:
 
         except SQLAlchemyError as e:
             return False, {"error": f"Erro ao gerar relatório detalhado da turma: {str(e)}"}
+    
+    @staticmethod
+    def get_progress_submissions(student_id, scenario_id):
+        try:
+            with Session() as session:
+                submissions = session.query(Submission).join(Question).filter(
+                    Submission.student_id == student_id,
+                    Question.scenario_database_id == scenario_id,
+                    Submission.is_correct == True,
+                    Submission.submitted_query != 'SKIP'
+                ).order_by(Submission.submitted_at.desc()).all()
+                
+                result = []
+                seen_qs = set()
+                
+                for sub in submissions:
+                    if sub.question_id not in seen_qs:
+                        seen_qs.add(sub.question_id)
+                        result.append({
+                            "question_id": sub.question_id,
+                            "student_sql": sub.submitted_query
+                        })
+                
+                return True, result
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar submissões de progresso: {str(e)}"
+
+    @staticmethod
+    def get_scenario_by_slug(slug):
+        try:
+            with Session() as session:
+                scenario = session.query(ScenarioDatabase).filter_by(slug=slug).first()
+                if scenario:
+                    session.expunge(scenario)
+                    return True, scenario
+                return False, "Banco de dados não encontrado."
+        except SQLAlchemyError as e:
+            return False, f"Erro ao buscar banco de dados: {str(e)}"

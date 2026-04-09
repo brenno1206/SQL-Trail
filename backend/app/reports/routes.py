@@ -136,3 +136,18 @@ def get_class_questions_detail(class_id):
         return jsonify(result), 200
     
     return jsonify(result), 500
+
+@reports_bp.route('/<slug>/progress-submissions', methods=['GET'])
+@role_required('student')
+def get_progress_submissions(slug):
+    claims = get_jwt()
+    student_id = claims.get('user_id')
+    
+    success_scenario, scenario = ReportService.get_scenario_by_slug(slug)
+    if not success_scenario:
+        return jsonify({"error": scenario}), 404
+
+    success, result = ReportService.get_progress_submissions(student_id, scenario.id)
+    if success:
+        return jsonify(result), 200
+    return jsonify({"error": result}), 500
