@@ -237,7 +237,7 @@ export const AdminService = {
     scenario_database_id: number;
     statement: string;
     expected_query: string;
-    difficulty: number;
+    question_number: number;
     is_special: boolean;
   }) => {
     const response = await api.post('/questions', questionData);
@@ -254,7 +254,7 @@ export const AdminService = {
     questionData: {
       statement?: string;
       expected_query?: string;
-      difficulty: number;
+      question_number: number;
       is_special?: boolean;
     },
   ) => {

@@ -49,6 +49,12 @@ export const StudentService = {
     const response = await api.post('/validate', validationData);
     return response.data;
   },
+
+  skipQuestion: async (question_id: number) => {
+    const response = await api.post('/validate/skip', { question_id });
+    return response.data;
+  },
+
   // ==========================
   // METRICS & PROGRESS
   // ==========================
@@ -69,8 +75,8 @@ export const StudentService = {
     return response.data.map((sub: any) => sub.question_id);
   },
 
-  skipQuestion: async (question_id: number) => {
-    const response = await api.post('/validate/skip', { question_id });
+  getProgressSubmissions: async (slug: string) => {
+    const response = await api.get(`/reports/${slug}/progress-submissions`);
     return response.data;
   },
 };

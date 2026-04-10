@@ -148,7 +148,7 @@ export const teacherService = {
     scenario_database_id: number;
     statement: string;
     expected_query: string;
-    difficulty: number;
+    question_number: number;
     is_special?: boolean;
   }) => {
     const response = await api.post('/questions', questionData);
@@ -165,7 +165,7 @@ export const teacherService = {
     questionData: {
       statement?: string;
       expected_query?: string;
-      difficulty?: number;
+      question_number?: number;
       is_special?: boolean;
     },
   ) => {
