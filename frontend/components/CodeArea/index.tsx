@@ -29,7 +29,7 @@ export default function CodeArea({
       <button
         id="btnValidate"
         onClick={validarConsulta}
-        className="w-full bg-blue-900 px-4 py-3 font-bold text-white transition-colors hover:bg-blue-800 active:bg-blue-700"
+        className="w-full bg-blue-900 px-4 py-3 font-bold text-white transition-colors hover:bg-blue-800 active:bg-blue-700 cursor-pointer"
       >
         Validar Consulta
       </button>
