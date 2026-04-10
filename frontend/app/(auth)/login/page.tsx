@@ -42,6 +42,7 @@ export default function LoginPage() {
       } else {
         await login(loginId, password, role);
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const mensagemBackend =
         err.response?.data?.error || err.response?.data?.message;
