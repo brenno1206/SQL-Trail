@@ -9,8 +9,8 @@ export default function StudentDashboard({ userName }: { userName: string }) {
           Painel do Aluno
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Bem-vindo(a), Prof. {userName}. Aqui você pode acessar os bancos de
-          dados para praticar suas habilidades em SQL.
+          Bem-vindo(a), {userName}. Aqui você pode acessar os bancos de dados
+          para praticar suas habilidades em SQL.
         </p>
       </div>
       <h1 className="text-4xl font-bold text-center text-gray-800 dark:text-gray-50 mb-12">
