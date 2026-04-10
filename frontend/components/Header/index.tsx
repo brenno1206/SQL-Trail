@@ -2,19 +2,31 @@
 'use client';
 
 import { useState } from 'react';
-import { QuestionListItem } from '@/types/Response';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  IoIosMore,
+  FaMap,
+  TiThMenu,
+  MdLogout,
+  IoMdCloseCircleOutline,
+  IoMdCheckmarkCircleOutline,
+} from '@/assets/icons';
+import { Question } from '@/types/models';
 
 interface HeaderProps {
   slug?: string;
-  availableQuestions?: QuestionListItem[];
+  allQuestions?: Question[];
+  completedIds?: number[];
+  skippedIds?: number[];
   onQuestionSelect?: (id: number) => void;
 }
 
 export default function Header({
   slug,
-  availableQuestions,
+  allQuestions,
+  completedIds = [],
+  skippedIds = [],
   onQuestionSelect,
 }: HeaderProps) {
   const { user, logout, isAuthenticated } = useAuth();
@@ -23,68 +35,78 @@ export default function Header({
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const showActionButtons = availableQuestions && availableQuestions.length > 0;
+  const showActionButtons = allQuestions && allQuestions.length > 0;
 
   const baseButtonStyles =
-    'rounded-lg bg-white px-5 py-2.5 font-semibold cursor-pointer text-blue-900 shadow-md transition-all duration-200 ease-in-out hover:bg-blue-50 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50 cursor-pointer';
+    'inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 md:px-4 md:py-2.5 text-sm md:text-base font-bold text-blue-900 shadow-sm transition-all duration-200 ease-out hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-blue-900 cursor-pointer border border-transparent hover:border-blue-100';
 
   const modalCloseButtonStyles =
     'absolute -top-3 -right-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-3xl font-light text-gray-600 shadow-lg transition-all duration-200 ease-in-out hover:rotate-90 hover:bg-red-50 hover:text-red-600';
+
+  const sortedQuestions = allQuestions
+    ? [...allQuestions].sort((a, b) => {
+        if (a.is_special !== b.is_special) {
+          return a.is_special ? -1 : 1;
+        }
+        return a.question_number - b.question_number;
+      })
+    : [];
+
+  const firstUncompletedId = sortedQuestions.find(
+    (q) => !completedIds.includes(q.id) && !skippedIds.includes(q.id),
+  )?.id;
 
   return (
     <>
       <header
         className={
-          'flex h-20 shrink-0 items-center bg-blue-900 px-10 py-4 text-white shadow-md ' +
+          'flex h-20 shrink-0 items-center bg-blue-900 px-4 md:px-10 py-4 text-white shadow-md ' +
           (showActionButtons ? 'justify-between' : 'justify-center')
         }
       >
-        <div className="flex flex-1 items-center justify-start gap-4">
+        <div className="flex flex-1 items-center justify-start">
           {showActionButtons && (
             <button
               id="btnNext"
               onClick={() => setIsQuestionModalOpen(true)}
               className={baseButtonStyles}
+              title="Ver Progresso"
             >
-              Selecionar Questão
+              <IoIosMore className="w-7 h-7" />
+              <span className="hidden sm:inline">Ver Progresso</span>
+              <span className="inline sm:hidden">Progresso</span>
             </button>
           )}
         </div>
 
-        <Link href="/" className="flex flex-1 items-center justify-center">
-          <h1 className="capitalize text-2xl font-bold cursor-pointer">
+        <Link
+          href="/"
+          className="flex flex-1 items-center justify-center px-2 min-w-0"
+        >
+          <h1 className="capitalize text-lg md:text-2xl font-bold cursor-pointer truncate text-center">
             SQL Trail {slug ? '- ' + slug.replace(/-/g, ' ') : ''}
           </h1>
         </Link>
 
-        <div className="flex flex-1 items-center justify-end gap-4">
+        <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
           {showActionButtons && (
             <button
               onClick={() => setIsErdModalOpen(true)}
               className={baseButtonStyles}
+              title="Ver Mapa Conceitual"
             >
-              Ver Mapa Conceitual
+              <FaMap className="w-5 h-5" />
+              <span className="hidden sm:inline">Ver Mapa Conceitual</span>
+              <span className="inline sm:hidden">Mapa</span>
             </button>
           )}
 
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 text-white hover:bg-blue-800 rounded-lg transition-colors focus:outline-none cursor-pointer"
+            className="p-2 text-white hover:bg-blue-800 rounded-xl transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
             aria-label="Abrir menu"
           >
-            <svg
-              className="w-8 h-8"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
+            <TiThMenu className="w-6 h-6" />
           </button>
         </div>
       </header>
@@ -92,11 +114,11 @@ export default function Header({
       {isErdModalOpen && (
         <div
           id="erdModal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 px-20 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 px-20 overflow-y-auto backdrop-blur-sm"
           onClick={() => setIsErdModalOpen(false)}
         >
           <div
-            className="relative h-full max-h-14/15 rounded-lg bg-white p-6 shadow-2xl"
+            className="relative h-full max-h-14/15 rounded-2xl bg-white p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <span
@@ -111,19 +133,19 @@ export default function Header({
             <img
               src={`/${slug}.png`}
               alt="Mapa Conceitual"
-              className="mt-4 h-auto max-h-5/6 rounded-md border border-gray-200"
+              className="mt-4 h-auto max-h-5/6 rounded-lg border border-gray-200"
             />
           </div>
         </div>
       )}
 
-      {isQuestionModalOpen && availableQuestions && onQuestionSelect && (
+      {isQuestionModalOpen && sortedQuestions.length > 0 && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           onClick={() => setIsQuestionModalOpen(false)}
         >
           <div
-            className="relative w-full max-w-lg rounded-lg bg-white p-6 shadow-2xl"
+            className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <span
@@ -133,32 +155,97 @@ export default function Header({
               &times;
             </span>
             <h2 className="mb-4 text-2xl font-bold text-gray-900">
-              Questões - {slug}
+              Progresso - {slug}
             </h2>
-            <ul className="flex max-h-96 flex-col space-y-2 overflow-y-auto divide-y divide-gray-200">
-              {availableQuestions.map((q, index) => (
-                <li key={q.id} className="flex flex-col center">
-                  <button
-                    onClick={() => {
-                      onQuestionSelect(q.id);
-                      setIsQuestionModalOpen(false);
-                    }}
-                    className="w-full rounded-lg p-4 text-left text-gray-800 transition-all duration-200 ease-in-out hover:bg-blue-50 hover:pl-6"
-                  >
-                    <strong>Questão {index + 1}:</strong>{' '}
-                    {q.enunciado.substring(0, 100)}...
-                  </button>
-                </li>
-              ))}
+            <ul className="flex max-h-[60vh] flex-col space-y-3 overflow-y-auto pr-2">
+              {sortedQuestions.map((q) => {
+                const isCompleted = completedIds.includes(q.id);
+                const isSkipped = skippedIds.includes(q.id) && !isCompleted;
+                const isCurrent = q.id === firstUncompletedId;
+                const isLocked = !isCompleted && !isSkipped && !isCurrent;
+
+                return (
+                  <li key={q.id} className="flex flex-col">
+                    <button
+                      disabled={isLocked}
+                      onClick={() => {
+                        if (onQuestionSelect && !isLocked) {
+                          onQuestionSelect(q.id);
+                          setIsQuestionModalOpen(false);
+                        }
+                      }}
+                      className={`w-full rounded-xl p-4 text-left border transition-all ${
+                        isLocked
+                          ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'
+                          : isCurrent
+                            ? 'bg-blue-50 border-blue-400 hover:bg-blue-100 cursor-pointer shadow-sm'
+                            : isSkipped
+                              ? 'bg-orange-50 border-orange-200 hover:bg-orange-100 cursor-pointer'
+                              : 'bg-green-50 border-green-200 hover:bg-green-100 cursor-pointer'
+                      }`}
+                    >
+                      <strong
+                        className={`inline-flex items-center gap-2 mb-1 ${
+                          isCompleted
+                            ? 'text-green-800'
+                            : isCurrent
+                              ? 'text-blue-800'
+                              : isSkipped
+                                ? 'text-orange-800'
+                                : 'text-gray-500'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <IoMdCheckmarkCircleOutline className="text-green-600 text-2xl stroke-2" />
+                        ) : isSkipped ? (
+                          <div className="w-5 h-5 flex items-center justify-center rounded-full border-2 border-orange-500 text-orange-600 font-bold text-xs">
+                            !
+                          </div>
+                        ) : isCurrent ? (
+                          <div className="w-5 h-5 rounded-full border-4 border-blue-500 animate-pulse" />
+                        ) : (
+                          <div className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold">
+                            X
+                          </div>
+                        )}
+                        <span>
+                          Questão {q.question_number}
+                          {q.is_special && (
+                            <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">
+                              Especial
+                            </span>
+                          )}
+                          {isCurrent && (
+                            <span className="ml-2 text-[10px] uppercase bg-blue-600 text-white px-2 py-0.5 rounded-md font-bold">
+                              Atual
+                            </span>
+                          )}
+                          {isSkipped && (
+                            <span className="ml-2 text-[10px] uppercase bg-orange-200 text-orange-800 px-2 py-0.5 rounded-md font-bold">
+                              Pulada
+                            </span>
+                          )}
+                        </span>
+                      </strong>
+                      <p
+                        className={`text-sm mt-1 ml-7 ${
+                          isLocked ? 'text-gray-400' : 'text-gray-700'
+                        }`}
+                      >
+                        {q.statement?.substring(0, 90)}...
+                      </p>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>
       )}
 
-      {/* COMPONENTIZAR */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 transition-opacity"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -172,21 +259,9 @@ export default function Header({
           <h2 className="text-xl font-bold text-gray-800">Menu</h2>
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+            className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-200 cursor-pointer"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <IoMdCloseCircleOutline className="w-6 h-6" />
           </button>
         </div>
 
@@ -199,7 +274,7 @@ export default function Header({
               <span className="font-bold text-blue-950 text-lg truncate">
                 {user.name}
               </span>
-              <span className="text-xs font-bold px-2.5 py-1 bg-blue-600 text-white rounded w-fit capitalize mt-1">
+              <span className="text-xs font-bold px-2.5 py-1 bg-blue-600 text-white rounded w-fit capitalize mt-1 shadow-sm">
                 {user.role}
               </span>
             </div>
@@ -215,7 +290,7 @@ export default function Header({
             <Link
               href="/"
               onClick={() => setIsSidebarOpen(false)}
-              className="px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition-colors font-semibold"
+              className="px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-all font-semibold"
             >
               Início
             </Link>
@@ -224,7 +299,7 @@ export default function Header({
               <Link
                 href="/login"
                 onClick={() => setIsSidebarOpen(false)}
-                className="px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition-colors font-semibold"
+                className="px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-all font-semibold"
               >
                 Fazer Login
               </Link>
@@ -239,21 +314,9 @@ export default function Header({
                 logout();
                 setIsSidebarOpen(false);
               }}
-              className="w-full py-3.5 flex items-center justify-center gap-2 text-red-600 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200 active:scale-95 cursor-pointer "
+              className="w-full py-3.5 flex items-center justify-center gap-2 text-red-600 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200 active:scale-95 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-300"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
+              <MdLogout className="w-5 h-5 font-bold" />
               Sair da Conta
             </button>
           </div>
