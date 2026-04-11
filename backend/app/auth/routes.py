@@ -6,7 +6,7 @@ from app.auth.decorators import role_required
 
 auth_bp = Blueprint('auth', __name__)
 
-# Função Auxiliar 
+# Função Auxiliar
 def serialize_user(user):
     """Converte a instância do banco de dados em um dicionário seguro para JSON."""
     if not user:

@@ -4,8 +4,10 @@ from app.database import Session
 from app.database.models import Admin, Teacher, Student
 
 class AuthService:
-    
-    # --- ADMIN SERVICES ---
+    '''Serviço de autenticação e gerenciamento de usuários.
+    Responsável por lidar com a lógica de negócios relacionada a admins, professores e alunos,
+    incluindo autenticação, criação, atualização e exclusão de usuários.'''
+    # ADMIN SERVICES
 
     @staticmethod
     def create_admin(data):
@@ -117,7 +119,7 @@ class AuthService:
         except SQLAlchemyError as e:
             return False, {"error": f"Erro ao buscar admins: {str(e)}"}
     
-    # --- TEACHER SERVICES ---
+    # TEACHER SERVICES
 
     @staticmethod
     def create_teacher(data):
@@ -239,7 +241,7 @@ class AuthService:
         except SQLAlchemyError as e:
             return False, {"error": f"Erro ao buscar professores: {str(e)}"}
     
-    # --- STUDENT SERVICES ---
+    # STUDENT SERVICES
 
     @staticmethod
     def create_student(data):
@@ -364,7 +366,7 @@ class AuthService:
         except SQLAlchemyError as e:
             return False, {"error": f"Erro ao buscar alunos: {str(e)}"}
 
-    # --- AUTHENTICATION SERVICES ---
+    # AUTHENTICATION SERVICES 
 
     @staticmethod
     def setup_student_first_access(registration, new_password):
