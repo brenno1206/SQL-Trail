@@ -7,7 +7,7 @@ import io
 
 classrooms_bp = Blueprint('classrooms', __name__)
 
-# --- FUNÇÕES AUXILIARES ---
+# FUNÇÃO AUXILIAR
 
 def serialize_user(user):
     """
@@ -37,7 +37,7 @@ def serialize_class(classroom):
     }
 
 
-# --- BUSCA E LISTAGEM DE TURMAS ---
+# ROTAS DE BUSCA E LISTAGEM DE TURMAS
 
 @classrooms_bp.route('/', methods=['GET'])
 @role_required('admin')
@@ -90,7 +90,7 @@ def get_my_classes_as_student():
     return jsonify(result), 500
 
 
-# --- ROTAS DE CRIAÇÃO, ATUALIZAÇÃO E EXCLUSÃO DE TURMAS ---
+# ROTAS DE CRIAÇÃO, ATUALIZAÇÃO E EXCLUSÃO DE TURMAS
 
 @classrooms_bp.route('/', methods=['POST'])
 @role_required('teacher', 'admin')
@@ -161,7 +161,7 @@ def delete_class(class_id):
     return jsonify(result), 400
 
 
-# --- ROTAS DE MATRÍCULA E GERENCIAMENTO DE ALUNOS ---
+# ROTAS DE MATRÍCULA E GERENCIAMENTO DE ALUNOS
 
 @classrooms_bp.route('/<int:class_id>/enroll', methods=['POST'])
 @role_required('teacher', 'admin')
@@ -188,9 +188,6 @@ def enroll_single_student(class_id):
     if success:
         return jsonify(result), 200
     return jsonify(result), 500
-
-
-# --- MATRÍCULA EM LOTE (CSV / XLSX) ---
 
 @classrooms_bp.route('/<int:class_id>/enroll/bulk', methods=['POST'])
 @role_required('teacher', 'admin')

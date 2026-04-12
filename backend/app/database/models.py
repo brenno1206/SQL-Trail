@@ -3,6 +3,8 @@ from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
+# Define os modelos de dados para a aplicação, representando as tabelas do banco de dados.
+
 class Admin(Base):
     __tablename__ = 'admins'
     id = Column(Integer, primary_key=True, autoincrement=True)

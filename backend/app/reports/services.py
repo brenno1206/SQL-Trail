@@ -10,6 +10,9 @@ class ReportService:
 
     @staticmethod
     def get_question_metrics(scenario_id=None, class_id=None, year_semester=None, question_id=None):
+        """
+        Retorna métricas detalhadas de acerto, tempo e tentativas por questão, com filtros opcionais.
+        """
         try:
             with Session() as session:
                 is_truly_correct = (Submission.is_correct == True) & (Submission.submitted_query != 'SKIP')
@@ -61,6 +64,10 @@ class ReportService:
 
     @staticmethod
     def get_user_last_correct_submissions(student_id, question_id=None, scenario_id=None):
+        """ 
+        Retorna as últimas submissões corretas de um aluno, com detalhes como tempo gasto e query submetida.
+        Filtros opcionais: question_id e scenario_id.
+        """
         if not student_id:
             return False, {"error": "ID do aluno é obrigatório."}
 
@@ -89,6 +96,9 @@ class ReportService:
 
     @staticmethod
     def get_user_question_engagement(student_id, question_id):
+        """"
+        Retorna o total de tentativas e tempo gasto por um aluno em uma questão específica.
+        """
         if not student_id or not question_id:
             return False, {"error": "IDs de aluno e questão são obrigatórios."}
 
@@ -115,6 +125,7 @@ class ReportService:
 
     @staticmethod
     def get_progress_summary(student_id=None, scenario_id=None):
+        """Retorna o resumo do progresso de um aluno, com filtros opcionais."""
         try:
             with Session() as session:
                 q_query = session.query(func.count(Question.id))
@@ -156,6 +167,7 @@ class ReportService:
 
     @staticmethod
     def get_class_questions_detail(class_id):
+        """Retorna o detalhamento por questão de uma turma específica."""
         if not class_id:
             return False, {"error": "ID da turma é obrigatório."}
 
@@ -250,6 +262,7 @@ class ReportService:
     
     @staticmethod
     def get_progress_submissions(student_id, scenario_id):
+        """Retorna as submissões de um aluno em um cenário específico, mostrando o progresso detalhado por questão."""
         try:
             with Session() as session:
                 submissions = session.query(Submission).join(Question).filter(
@@ -276,6 +289,7 @@ class ReportService:
 
     @staticmethod
     def get_scenario_by_slug(slug):
+        """Retorna o cenário correspondente a um slug específico."""
         try:
             with Session() as session:
                 scenario = session.query(ScenarioDatabase).filter_by(slug=slug).first()

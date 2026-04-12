@@ -1,16 +1,15 @@
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.exc import SQLAlchemyError # <-- Nova importação para tratar erros de DB
+from sqlalchemy.exc import SQLAlchemyError
 from app.database import Session
 from app.database.models import Admin, Teacher, Student
 
 class AuthService:
-    '''Serviço de autenticação e gerenciamento de usuários.
-    Responsável por lidar com a lógica de negócios relacionada a admins, professores e alunos,
-    incluindo autenticação, criação, atualização e exclusão de usuários.'''
+    """Serviços relacionados à autenticação e gerenciamento de usuários (Admin, Teacher, Student)."""
     # ADMIN SERVICES
 
     @staticmethod
     def create_admin(data):
+        """Cria um novo admin com os dados fornecidos."""
         if not data or not isinstance(data, dict):
             return False, {"error": "Dados inválidos fornecidos."}
 
@@ -43,6 +42,7 @@ class AuthService:
 
     @staticmethod
     def get_admin(admin_id):
+        """Busca admin pelo ID primário."""
         if not admin_id:
             return False, {"error": "ID do Admin é obrigatório."}
 
@@ -58,6 +58,7 @@ class AuthService:
 
     @staticmethod
     def update_admin(admin_id, data):
+        """Atualiza os dados de um admin existente. Permite atualizar nome, email e senha."""
         if not admin_id or not data or not isinstance(data, dict):
             return False, {"error": "ID e dados de atualização são obrigatórios."}
 
@@ -90,6 +91,7 @@ class AuthService:
 
     @staticmethod
     def delete_admin(admin_id):
+        """Deleta um admin do sistema com base no ID fornecido."""
         if not admin_id:
             return False, {"error": "ID do Admin é obrigatório."}
 
@@ -108,9 +110,7 @@ class AuthService:
 
     @staticmethod
     def get_all_admins():
-        """
-        Retorna todos os admins cadastrados no sistema.
-        """
+        """Retorna todos os admins cadastrados no sistema."""
         try:
             with Session() as session:
                 admins = session.query(Admin).all()
@@ -123,6 +123,7 @@ class AuthService:
 
     @staticmethod
     def create_teacher(data):
+        """Cria um novo professor com os dados fornecidos."""
         if not data or not isinstance(data, dict):
             return False, {"error": "Dados inválidos fornecidos."}
 
@@ -158,6 +159,7 @@ class AuthService:
 
     @staticmethod
     def get_teacher(teacher_id):
+        """Busca professor pelo ID primário."""
         if not teacher_id:
             return False, {"error": "ID do Professor é obrigatório."}
 
@@ -173,6 +175,7 @@ class AuthService:
 
     @staticmethod
     def update_teacher(teacher_id, data):
+        """Atualiza os dados de um professor existente."""
         if not teacher_id or not data or not isinstance(data, dict):
             return False, {"error": "ID e dados de atualização são obrigatórios."}
 
@@ -212,6 +215,7 @@ class AuthService:
 
     @staticmethod
     def delete_teacher(teacher_id):
+        """Deleta um professor do sistema com base no ID fornecido."""
         if not teacher_id:
             return False, {"error": "ID do Professor é obrigatório."}
 
@@ -230,9 +234,7 @@ class AuthService:
 
     @staticmethod
     def get_all_teachers():
-        """
-        Retorna todos os professores cadastrados no sistema.
-        """
+        """Retorna todos os professores cadastrados no sistema."""
         try:
             with Session() as session:
                 teachers = session.query(Teacher).all()
@@ -245,6 +247,7 @@ class AuthService:
 
     @staticmethod
     def create_student(data):
+        """Cria um novo aluno com os dados fornecidos."""
         if not data or not isinstance(data, dict):
             return False, {"error": "Dados inválidos fornecidos."}
 
@@ -289,7 +292,7 @@ class AuthService:
             
     @staticmethod
     def get_student_by_registration(registration_number):
-        """Busca aluno pela matrícula (útil para matrículas em lote/CSV)."""
+        """Busca aluno pela matrícula."""
         if not registration_number:
             return False, {"error": "Matrícula é obrigatória."}
 
@@ -305,6 +308,7 @@ class AuthService:
 
     @staticmethod
     def update_student(student_id, data):
+        """Atualiza os dados de um aluno existente."""
         if not student_id or not data or not isinstance(data, dict):
             return False, {"error": "ID e dados de atualização são obrigatórios."}
 
@@ -337,6 +341,7 @@ class AuthService:
 
     @staticmethod
     def delete_student(student_id):
+        """Deleta um aluno do sistema com base no ID fornecido."""
         if not student_id:
             return False, {"error": "ID do Aluno é obrigatório."}
 
@@ -355,9 +360,7 @@ class AuthService:
 
     @staticmethod
     def get_all_students():
-        """
-        Retorna todos os alunos cadastrados no sistema.
-        """
+        """Retorna todos os alunos cadastrados no sistema."""
         try:
             with Session() as session:
                 students = session.query(Student).all()
@@ -370,6 +373,7 @@ class AuthService:
 
     @staticmethod
     def setup_student_first_access(registration, new_password):
+        """Configura o primeiro acesso de um aluno, permitindo que ele defina sua senha pela primeira vez usando sua matrícula."""
         if not registration or not new_password:
             return False, {"error": "Matrícula e nova senha são obrigatórias."}
 
@@ -393,6 +397,7 @@ class AuthService:
 
     @staticmethod
     def authenticate_user(login_id, password, role):
+        """Autentica um usuário (Admin, Teacher ou Student) com base no login (email ou matrícula), senha e role fornecidos."""
         if not login_id or not password or not role:
             return False, {"error": "Login, senha e role são obrigatórios."}
 

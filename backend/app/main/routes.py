@@ -6,6 +6,7 @@ from app.auth.decorators import role_required
 bp = Blueprint('main', __name__)
 
 def serialize_question(q):
+    """Converte um objeto Question em um dicionário para resposta JSON."""
     return {
         "id": q.id,
         "scenario_database_id": q.scenario_database_id,
@@ -16,6 +17,7 @@ def serialize_question(q):
     }
 
 def serialize_submission(s):
+    """Converte um objeto Submission em um dicionário para resposta JSON."""
     return {
         "id": s.id,
         "student_id": s.student_id,
@@ -28,6 +30,7 @@ def serialize_submission(s):
     }
 
 def serialize_scenario(s):
+    """Converte um objeto ScenarioDatabase em um dicionário para resposta JSON."""
     return {
         "id": s.id,
         "slug": s.slug,
@@ -35,10 +38,11 @@ def serialize_scenario(s):
         "diagram_url": s.diagram_url
     }
 
-# --- ROTAS DE SCENARIO DATABASES ---
+# ROTAS DE SCENARIO DATABASES -- CRUD 
 
 @bp.route('/scenarios', methods=['GET'])
 def get_scenarios():
+    """Retorna a lista de todos os cenários disponíveis."""
     success, result = ScenarioDatabaseService.get_all_scenarios()
     if success:
         return jsonify([serialize_scenario(s) for s in result]), 200
@@ -47,6 +51,7 @@ def get_scenarios():
 @bp.route('/scenarios', methods=['POST'])
 @role_required('admin', 'teacher')
 def create_scenario():
+    """Cria um novo cenário com base nos dados fornecidos no corpo da requisição."""
     data = request.get_json() or {}
     success, result = ScenarioDatabaseService.create_scenario(data)
     if success:
@@ -55,6 +60,7 @@ def create_scenario():
 
 @bp.route('/scenarios/<slug>', methods=['GET'])
 def get_scenario(slug):
+    """Retorna os detalhes de um cenário específico identificado pelo slug."""
     success, result = ScenarioDatabaseService.get_scenario_by_slug(slug)
     if success:
         return jsonify(serialize_scenario(result)), 200
@@ -63,6 +69,7 @@ def get_scenario(slug):
 @bp.route('/scenarios/<slug>', methods=['PUT'])
 @role_required('admin', 'teacher')
 def update_scenario(slug):
+    """Atualiza um cenário existente com base nos dados fornecidos no corpo da requisição."""
     data = request.get_json() or {}
     success, result = ScenarioDatabaseService.update_scenario(slug, data)
     if success:
@@ -72,15 +79,17 @@ def update_scenario(slug):
 @bp.route('/scenarios/<slug>', methods=['DELETE'])
 @role_required('admin', 'teacher')
 def delete_scenario(slug):
+    """Exclui um cenário específico identificado pelo slug."""
     success, result = ScenarioDatabaseService.delete_scenario(slug)
     if success:
         return jsonify({"msg": result}), 200
     return jsonify({"error": result}), 400
 
-# --- ROTAS DE QUESTÕES (CRUD) ---
+# ROTAS DE QUESTÕES -- CRUD
 
 @bp.route('/questions', methods=['GET'])
 def get_all_questions():
+    """Retorna a lista de todas as questões disponíveis."""
     success, result = QuestionService.get_all_questions()
     if success:
         return jsonify([serialize_question(q) for q in result]), 200
@@ -89,6 +98,7 @@ def get_all_questions():
 @bp.route('/questions', methods=['POST'])
 @role_required('admin', 'teacher')
 def create_question():
+    """Cria uma nova questão com base nos dados fornecidos no corpo da requisição."""
     data = request.get_json() or {}
     success, result = QuestionService.create_question(data)
     if success:
@@ -97,6 +107,7 @@ def create_question():
 
 @bp.route('/questions/<int:question_id>', methods=['GET'])
 def get_question(question_id):
+    """Retorna os detalhes de uma questão específica identificada pelo ID."""
     success, result = QuestionService.get_question_by_id(question_id)
     if success:
         return jsonify(serialize_question(result)), 200
@@ -105,6 +116,7 @@ def get_question(question_id):
 @bp.route('/questions/<int:question_id>', methods=['PUT'])
 @role_required('admin', 'teacher')
 def update_question(question_id):
+    """Atualiza uma questão existente com base nos dados fornecidos no corpo da requisição."""
     data = request.get_json() or {}
     success, result = QuestionService.update_question(question_id, data)
     if success:
@@ -114,16 +126,18 @@ def update_question(question_id):
 @bp.route('/questions/<int:question_id>', methods=['DELETE'])
 @role_required('admin', 'teacher')
 def delete_question(question_id):
+    """Exclui uma questão específica identificada pelo ID."""
     success, result = QuestionService.delete_question(question_id)
     if success:
         return jsonify({"msg": result}), 200
     return jsonify({"error": result}), 400
 
 
-# --- ROTAS ESPECÍFICAS DE CENÁRIO ---
+# ROTAS ESPECÍFICAS DE CENÁRIO E QUESTÕES
 
 @bp.route('/questions/<slug>', methods=['GET'])
 def get_questions_by_scenario(slug):
+    """Retorna a lista de questões associadas a um cenário específico identificado pelo slug."""
     success_scenario, scenario = ScenarioDatabaseService.get_scenario_by_slug(slug)
     if not success_scenario:
         return jsonify({"error": scenario}), 404
@@ -136,6 +150,7 @@ def get_questions_by_scenario(slug):
 
 @bp.route('/questions/<slug>/special', methods=['GET'])
 def get_special_questions(slug):
+    """Retorna a lista de questões marcadas como especiais associadas a um cenário específico identificado pelo slug."""
     success_scenario, scenario = ScenarioDatabaseService.get_scenario_by_slug(slug)
     if not success_scenario:
         return jsonify({"error": scenario}), 404
@@ -147,6 +162,7 @@ def get_special_questions(slug):
 
 @bp.route('/questions/<slug>/not-special', methods=['GET'])
 def get_not_special_questions(slug):
+    """Retorna a lista de questões que não são marcadas como especiais associadas a um cenário específico identificado pelo slug."""
     success_scenario, scenario = ScenarioDatabaseService.get_scenario_by_slug(slug)
     if not success_scenario:
         return jsonify({"error": scenario}), 404
@@ -159,6 +175,7 @@ def get_not_special_questions(slug):
 @bp.route('/scenarios/<slug>/special-completed', methods=['GET'])
 @role_required('student')
 def check_special_completion(slug):
+    """Verifica se o aluno completou todas as questões especiais de um cenário específico identificado pelo slug."""
     student_id = get_jwt_identity()
     
     success_scenario, scenario = ScenarioDatabaseService.get_scenario_by_slug(slug)
@@ -171,11 +188,12 @@ def check_special_completion(slug):
     return jsonify({"error": result}), 500
 
 
-# --- ROTA DE VALIDAÇÃO ---
+# ROTAS DE VALIDAÇÃO
 
 @bp.route('/validate', methods=['POST'])
 @role_required('student')
 def validate():
+    """Valida a consulta SQL enviada pelo aluno para uma questão específica, comparando-a com a consulta esperada e salvando a submissão."""
     claims = get_jwt()
     student_id = claims.get('user_id')
     data = request.get_json() or {}
@@ -231,6 +249,7 @@ def validate():
 @bp.route('/validate/skip', methods=['POST'])
 @role_required('student')
 def skip_question_route():
+    """Permite que um aluno pule uma questão específica, registrando a ação e avançando para a próxima questão do cenário."""
     claims = get_jwt()
     student_id = claims.get('user_id')
     data = request.get_json() or {}
@@ -243,6 +262,7 @@ def skip_question_route():
 @bp.route('/validate/testing', methods=['POST'])
 @role_required('teacher', 'admin')
 def validate_testing():
+    """Rota de validação para fins de teste, permitindo que professores e administradores testem consultas SQL sem registrar submissões."""
     data = request.get_json() or {}
     slug = data.get('slug')
     q_id = data.get('question_id')

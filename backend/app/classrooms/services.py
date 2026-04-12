@@ -4,6 +4,7 @@ from app.database.models import Class, Enrollment, Student
 from app.auth.services import AuthService
 
 class ClassroomService:
+    """Serviço responsável por gerenciar as operações relacionadas às turmas, incluindo CRUD e matrículas."""
     
     @staticmethod
     def get_all_classes():
@@ -237,7 +238,7 @@ class ClassroomService:
     @staticmethod
     def _get_or_create_student_id(registration_number, name):
         """
-        Helper interno: Usa o AuthService para buscar ou criar o aluno.
+        Usa o AuthService para buscar ou criar o aluno.
         """
         success, result = AuthService.get_student_by_registration(registration_number)
         

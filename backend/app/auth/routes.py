@@ -6,7 +6,7 @@ from app.auth.decorators import role_required
 
 auth_bp = Blueprint('auth', __name__)
 
-# Função Auxiliar
+# FUNÇÃO AUXILIAR
 def serialize_user(user):
     """Converte a instância do banco de dados em um dicionário seguro para JSON."""
     if not user:
@@ -18,11 +18,12 @@ def serialize_user(user):
         data['registration_number'] = user.registration_number
     return data
 
-# admin routes
+# ROTAS DE ADMINISTRADOR
 
 @auth_bp.route('/admin', methods=['POST'])
 @role_required('admin')
 def register_admin():
+    """Rota para criar um novo administrador."""
     data = request.get_json()
     success, response = AuthService.create_admin(data)
 
@@ -35,6 +36,7 @@ def register_admin():
 @auth_bp.route('/admin/<int:admin_id>', methods=['GET'])
 @role_required('admin')
 def get_admin(admin_id):
+    """Rota para buscar um administrador pelo ID."""
     success, result = AuthService.get_admin(admin_id)
     if not success:
         return jsonify(result), 404
@@ -43,6 +45,7 @@ def get_admin(admin_id):
 @auth_bp.route('/admin/<int:admin_id>', methods=['PUT'])
 @role_required('admin')
 def update_admin(admin_id):
+    """Rota para atualizar um administrador pelo ID."""
     data = request.get_json()
     success, response = AuthService.update_admin(admin_id, data)
     if not success:
@@ -54,6 +57,7 @@ def update_admin(admin_id):
 @auth_bp.route('/admin/<int:admin_id>', methods=['DELETE'])
 @role_required('admin')
 def delete_admin(admin_id):
+    """Rota para deletar um administrador pelo ID."""
     success, response = AuthService.delete_admin(admin_id)
     if not success:
         return jsonify(response), 404
@@ -62,10 +66,7 @@ def delete_admin(admin_id):
 @auth_bp.route('/admins', methods=['GET'])
 @role_required('admin')
 def get_all_admins():
-    """
-    Rota para listar todos os administradores cadastrados.
-    Acesso restrito a administradores.
-    """
+    """Rota para listar todos os administradores cadastrados."""
     success, result = AuthService.get_all_admins()
     
     if success:
@@ -74,11 +75,12 @@ def get_all_admins():
     return jsonify(result), 500
 
 
-# teacher routes
+# ROTAS DE PROFESSOR
 
 @auth_bp.route('/teacher', methods=['POST'])
 @role_required('admin')
 def register_teacher():
+    """Rota para criar um novo professor."""
     data = request.get_json()
     success, response = AuthService.create_teacher(data)
 
@@ -91,6 +93,7 @@ def register_teacher():
 @auth_bp.route('/teacher/<int:teacher_id>', methods=['GET'])
 @role_required('admin', 'teacher')
 def get_teacher(teacher_id):
+    """Rota para buscar um professor pelo ID."""
     success, result = AuthService.get_teacher(teacher_id)
     if not success:
         return jsonify(result), 404
@@ -99,6 +102,7 @@ def get_teacher(teacher_id):
 @auth_bp.route('/teacher/<int:teacher_id>', methods=['PUT'])
 @role_required('admin')
 def update_teacher(teacher_id):
+    """Rota para atualizar um professor pelo ID."""
     data = request.get_json()
     success, response = AuthService.update_teacher(teacher_id, data)
     if not success:
@@ -110,17 +114,19 @@ def update_teacher(teacher_id):
 @auth_bp.route('/teacher/<int:teacher_id>', methods=['DELETE'])
 @role_required('admin')
 def delete_teacher(teacher_id):
+    """Rota para deletar um professor pelo ID."""
     success, response = AuthService.delete_teacher(teacher_id)
     if not success:
         return jsonify(response), 404
     return jsonify(response), 200
 
 
-# student routes
+# ROTAS DE ALUNO
 
 @auth_bp.route('/student', methods=['POST'])
 @role_required('admin', 'teacher')
 def register_student():
+    """Rota para criar um novo aluno."""
     data = request.get_json()
     success, response = AuthService.create_student(data)
     
@@ -133,6 +139,7 @@ def register_student():
 @auth_bp.route('/student/<int:student_id>', methods=['GET'])
 @role_required('admin', 'teacher', 'student')
 def get_student(student_id):
+    """Rota para buscar um aluno pelo ID."""
     success, result = AuthService.get_student(student_id)
     if not success:
         return jsonify(result), 404
@@ -141,6 +148,7 @@ def get_student(student_id):
 @auth_bp.route('/student/<int:student_id>', methods=['PUT'])
 @role_required('admin', 'teacher')
 def update_student(student_id):
+    """Rota para atualizar um aluno pelo ID."""
     data = request.get_json()
     success, response = AuthService.update_student(student_id, data)
     if not success:
@@ -152,6 +160,7 @@ def update_student(student_id):
 @auth_bp.route('/student/<int:student_id>', methods=['DELETE'])
 @role_required('admin', 'teacher')
 def delete_student(student_id):
+    """Rota para deletar um aluno pelo ID."""
     success, response = AuthService.delete_student(student_id)
     if not success:
         return jsonify(response), 404
@@ -160,10 +169,7 @@ def delete_student(student_id):
 @auth_bp.route('/teachers', methods=['GET'])
 @role_required('admin')
 def get_all_teachers():
-    """
-    Rota para listar todos os professores cadastrados.
-    Acesso restrito a administradores.
-    """
+    """Rota para listar todos os professores cadastrados."""
     success, result = AuthService.get_all_teachers()
     
     if success:
@@ -174,10 +180,7 @@ def get_all_teachers():
 @auth_bp.route('/students', methods=['GET'])
 @role_required('admin', 'teacher')
 def get_all_students():
-    """
-    Rota para listar todos os alunos cadastrados.
-    Acesso permitido para administradores e professores.
-    """
+    """Rota para listar todos os alunos cadastrados."""
     success, result = AuthService.get_all_students()
     
     if success:
@@ -185,10 +188,11 @@ def get_all_students():
         
     return jsonify(result), 500
 
-# auth routes
+# ROTAS DE AUTENTICAÇÃO
 
 @auth_bp.route('/student/first-access', methods=['POST'])
 def student_first_access():
+    """Rota para configurar o primeiro acesso de um aluno."""
     data = request.get_json()
     registration = data.get('registration_number')
     new_password = data.get('new_password')
@@ -208,6 +212,7 @@ def student_first_access():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
+    """Rota para autenticar um usuário e gerar um token JWT."""
     data = request.get_json()
     login_id = data.get('login_id')
     password = data.get('password')

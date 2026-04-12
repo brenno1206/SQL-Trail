@@ -17,7 +17,7 @@ def serialize_submission_report(s):
     }
 
 
-# --- MÉTRICAS GLOBAIS E DE TURMA (ADMIN / PROFESSORES) ---
+# MÉTRICAS GLOBAIS E DE TURMA (ADMIN / PROFESSORES)
 
 @reports_bp.route('/questions/metrics', methods=['GET'])
 @role_required('admin', 'teacher')
@@ -43,11 +43,15 @@ def get_global_metrics():
     return jsonify(result), 500
 
 
-# --- RELATÓRIOS ESPECÍFICOS DO ALUNO (ESTUDANTES) ---
+# RELATÓRIOS ESPECÍFICOS DO ALUNO (ESTUDANTES)
 
 @reports_bp.route('/me/submissions/correct/latest', methods=['GET'])
 @role_required('student')
 def get_my_latest_correct_submissions():
+    """"
+    Retorna as últimas submissões corretas do usuário logado, com detalhes como tempo gasto e query submetida.
+    Filtros opcionais: ?scenario_id=1 & question_id=10
+    """
     claims = get_jwt()
     student_id = claims.get('user_id')
     
@@ -95,7 +99,7 @@ def get_my_progress():
     return jsonify(result), 500
 
 
-# --- RELATÓRIOS DO ALUNO VISTOS PELO PROFESSOR ---
+# RELATÓRIOS DO ALUNO VISTOS PELO PROFESSOR
 
 @reports_bp.route('/students/<int:student_id>/progress', methods=['GET'])
 @role_required('admin', 'teacher')
@@ -140,6 +144,9 @@ def get_class_questions_detail(class_id):
 @reports_bp.route('/<slug>/progress-submissions', methods=['GET'])
 @role_required('student')
 def get_progress_submissions(slug):
+    """"
+    Retorna as submissões de um aluno em um cenário específico, mostrando o progresso detalhado por questão.
+    """
     claims = get_jwt()
     student_id = claims.get('user_id')
     

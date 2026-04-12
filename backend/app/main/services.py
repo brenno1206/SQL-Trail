@@ -13,6 +13,7 @@ class ScenarioDatabaseService:
     
     @staticmethod
     def get_all_scenarios():
+        """Retorna a lista de todos os bancos de dados de cenário disponíveis, com tratamento de erros e gerenciamento de sessão adequado."""
         try:
             with Session() as session:
                 scenarios = session.query(ScenarioDatabase).all()
@@ -23,6 +24,7 @@ class ScenarioDatabaseService:
 
     @staticmethod
     def get_scenario_by_slug(slug):
+        """Retorna os detalhes de um cenário específico identificado pelo slug."""
         try:
             with Session() as session:
                 scenario = session.query(ScenarioDatabase).filter_by(slug=slug).first()
@@ -35,6 +37,7 @@ class ScenarioDatabaseService:
 
     @staticmethod
     def create_scenario(data):
+        """Cria um novo banco de dados de cenário com os detalhes fornecidos, salvando as informações no banco de dados e retornando o resultado da operação."""
         try:
             with Session() as session:
                 scenario = ScenarioDatabase(
@@ -52,6 +55,7 @@ class ScenarioDatabaseService:
 
     @staticmethod
     def delete_scenario(scenario_id):
+        """Deleta um banco de dados de cenário específico identificado pelo ID, removendo-o do banco de dados e retornando o resultado da operação."""
         try:
             with Session() as session:
                 scenario = session.query(ScenarioDatabase).filter_by(id=scenario_id).first()
@@ -66,6 +70,7 @@ class ScenarioDatabaseService:
     
     @staticmethod
     def update_scenario(scenario_id, data):
+        """Atualiza os detalhes de um banco de dados de cenário específico identificado pelo ID, modificando as informações no banco de dados e retornando o resultado da operação."""
         try:
             with Session() as session:
                 scenario = session.query(ScenarioDatabase).filter_by(id=scenario_id).first()
@@ -84,10 +89,11 @@ class ScenarioDatabaseService:
             return False, f"Erro ao atualizar banco de dados: {str(e)}"
 
 class QuestionService:
-    """Gerencia o CRUD das questões no banco de dados TiDB."""
+    """Gerencia o CRUD das questões no banco de dados e a associação com os cenários."""
 
     @staticmethod
     def create_question(data):
+        """Cria uma nova questão associada a um cenário específico, salvando os detalhes no banco de dados."""
         try:
             with Session() as session:
                 question = Question(
@@ -107,6 +113,7 @@ class QuestionService:
 
     @staticmethod
     def get_all_questions():
+        """Retorna a lista de todas as questões disponíveis, com tratamento de erros e gerenciamento de sessão adequado."""
         try:
             with Session() as session:
                 questions = session.query(Question).all()
@@ -117,6 +124,7 @@ class QuestionService:
 
     @staticmethod
     def get_questions_by_scenario(scenario_id):
+        """Retorna a lista de questões associadas a um cenário específico identificado pelo ID, com tratamento de erros e gerenciamento de sessão adequado."""
         try:
             with Session() as session:
                 questions = session.query(Question).filter_by(scenario_database_id=scenario_id).all()
@@ -127,6 +135,7 @@ class QuestionService:
 
     @staticmethod
     def get_question_by_id(question_id):
+        """Retorna os detalhes de uma questão específica identificada pelo ID, com tratamento de erros e gerenciamento de sessão adequado."""
         try:
             with Session() as session:
                 question = session.query(Question).filter_by(id=question_id).first()
@@ -139,6 +148,7 @@ class QuestionService:
 
     @staticmethod
     def get_special_questions(scenario_id, limit=10):
+        """Retorna a lista de questões marcadas como especiais associadas a um cenário específico identificado pelo ID, limitando o número de questões retornadas, com tratamento de erros e gerenciamento de sessão adequado."""
         try:
             with Session() as session:
                 questions = session.query(Question).filter_by(
@@ -152,6 +162,7 @@ class QuestionService:
 
     @staticmethod
     def get_not_special_questions(scenario_id):
+        """Retorna a lista de questões que não são marcadas como especiais associadas a um cenário específico identificado pelo ID, com tratamento de erros e gerenciamento de sessão adequado."""
         try:
             with Session() as session:
                 questions = session.query(Question).filter_by(
@@ -165,6 +176,7 @@ class QuestionService:
 
     @staticmethod
     def update_question(question_id, data):
+        """Atualiza os detalhes de uma questão específica identificada pelo ID, modificando as informações no banco de dados e retornando o resultado da operação, incluindo a exclusão de submissões associadas à questão para garantir a integridade dos dados."""
         try:
             with Session() as session:
                 question = session.query(Question).filter_by(id=question_id).first()
@@ -187,6 +199,7 @@ class QuestionService:
     
     @staticmethod
     def delete_question(question_id):
+        """Deleta uma questão específica identificada pelo ID, removendo-a do banco de dados e deletando as submissões associadas para garantir a integridade dos dados, retornando o resultado da operação."""
         try:
             with Session() as session:
                 question = session.query(Question).filter_by(id=question_id).first()
@@ -205,6 +218,7 @@ class SubmissionService:
     
     @staticmethod
     def save_submission(student_id, question_id, time_spent, submitted_query, is_correct, output):
+        """Salva uma submissão de um aluno para uma questão específica, registrando o tempo gasto, a query submetida, se a resposta está correta e o output da execução, com tratamento de erros e gerenciamento de sessão adequado."""
         try:
             with Session() as session:
                 submission = Submission(
@@ -270,6 +284,7 @@ class SupabaseService:
 
     @staticmethod
     def get_client(slug):
+        """Cria um cliente do Supabase para um cenário específico identificado pelo slug, utilizando as variáveis de ambiente para obter as credenciais necessárias, e retornando o cliente ou None se as credenciais não estiverem disponíveis."""
         suffix = slug.upper().replace('-', '_')
         url = os.getenv(f"SUPABASE_URL_{suffix}")
         key = os.getenv(f"SUPABASE_KEY_{suffix}")
@@ -335,6 +350,7 @@ class SQLGrader:
 
     @staticmethod
     def is_safe_query(query: str) -> bool:
+        """Verifica se a query submetida é segura, garantindo que ela comece com SELECT ou WITH, não contenha múltiplas instruções e não utilize comandos SQL potencialmente perigosos, utilizando expressões regulares para detectar padrões suspeitos e retornando um booleano indicando se a query é considerada segura ou não."""
         query_upper = query.upper()
         
         if not (query.strip().lower().startswith('select') or query.strip().lower().startswith('with')):
@@ -356,7 +372,7 @@ class SQLGrader:
     
     @staticmethod
     def compare(base_sql, student_sql, base_res, student_res):
-        """Compara os DataFrames resultantes em 3 niveis: Exato, Ordenacao, Alfanumerico."""
+        """Compara os DataFrames resultantes."""
         base_upper = " " + base_sql.upper().replace('\n', ' ') + " "
         
         base_data = base_res.get('data')
@@ -418,6 +434,7 @@ class SQLGrader:
 
     @staticmethod
     def _normalize_df(df):
+        """Normaliza os dados do DataFrame para comparação."""
         df = df.round(2)
         df = df.astype(str)
         df = df.map(lambda x: x.strip().lower() if isinstance(x, str) else x)
@@ -425,10 +442,12 @@ class SQLGrader:
     
     @staticmethod
     def _sort_matrix(df):
+        """Ordena as linhas do DataFrame para comparação, retornando uma lista de listas ordenada."""
         return sorted(df.values.tolist())
     
     @staticmethod
     def _get_alphanumeric_fingerprint(df):
+        """Gera uma representação alfanumérica dos dados do DataFrame."""
         fingerprints = []
         for _, row in df.iterrows():
             row_str = "".join([str(x) for x in row.values])

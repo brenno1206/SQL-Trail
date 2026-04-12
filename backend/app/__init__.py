@@ -1,6 +1,7 @@
 from flask import Flask
 
 def create_app():
+    """Função factory para criar e configurar a aplicação Flask."""
 
     app = Flask(__name__)
 

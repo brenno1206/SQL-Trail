@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
 
+# Carrega as variáveis de ambiente do arquivo .env
 
 load_dotenv()
 
@@ -12,6 +13,8 @@ TIDB_USER = os.getenv("TIDB_USER")
 TIDB_PASSWORD = os.getenv("TIDB_PASSWORD")
 TIDB_DB_NAME = os.getenv("TIDB_DB_NAME")
 CA_PATH = os.getenv("CA_PATH")
+
+# Configura a conexão com o banco de dados usando SQLAlchemy
 
 connect_args = {
     "ssl_verify_cert": True,
@@ -31,5 +34,7 @@ engine = create_engine(
     connect_args=connect_args,
     pool_recycle=300
 )
+
+# Cria a sessão para interagir com o banco de dados
 
 Session = sessionmaker(bind=engine)
