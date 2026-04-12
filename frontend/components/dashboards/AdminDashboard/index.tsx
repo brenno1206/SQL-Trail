@@ -1,5 +1,8 @@
 import Link from 'next/link';
 
+/**
+ * Componente de dashboard dos administradores
+ */
 const AdminDashboard = ({ userName }: { userName: string }) => (
   <section className="max-w-6xl mx-auto p-6 md:p-10">
     <div className="mb-8 border-b border-gray-200 dark:border-gray-700 pb-4 flex justify-between items-end">

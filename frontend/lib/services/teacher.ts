@@ -1,9 +1,7 @@
 import { api } from '@/lib/api';
 
 export const teacherService = {
-  // ==========================
-  // CLASS CRUD
-  // ==========================
+  // CLASSE CRUD
   getMyClasses: async () => {
     const response = await api.get('/classrooms/my-classes/teacher');
     return response.data;
@@ -40,9 +38,7 @@ export const teacherService = {
     return response.data;
   },
 
-  // ==========================
-  // ENROLLMENT OPERATIONS
-  // ==========================
+  // GERENCIAMENTO DE MATRÍCULAS
   getStudentsInClass: async (classId: number) => {
     const response = await api.get(`/classrooms/${classId}/students`);
     return response.data;
@@ -82,9 +78,7 @@ export const teacherService = {
     return response.data;
   },
 
-  // ==========================
-  // SCENARIO CRUD
-  // ==========================
+  // CENÁRIO CRUD
   getAllScenarios: async () => {
     const response = await api.get('/scenarios');
     return response.data;
@@ -121,9 +115,7 @@ export const teacherService = {
     return response.data;
   },
 
-  // ==========================
-  // QUESTION CRUD
-  // ==========================
+  // QUESTÕES CRUD
   getAllQuestions: async () => {
     const response = await api.get('/questions');
     return response.data;
@@ -178,9 +170,7 @@ export const teacherService = {
     return response.data;
   },
 
-  // ==========================
-  // TESTING & VALIDATION
-  // ==========================
+  // TESTES DE VALIDAÇÃO
   validateTestingQuery: async (testingData: {
     slug: string;
     question_id: number;
@@ -190,9 +180,7 @@ export const teacherService = {
     return response.data;
   },
 
-  // ==========================
-  // REPORTS & METRICS
-  // ==========================
+  // MÉTRICAS & RELATÓRIOS
   getGlobalMetrics: async (params?: {
     scenario_id?: number;
     class_id?: number;

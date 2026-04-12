@@ -10,6 +10,17 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { Teacher, Class } from '@/types/models';
 import { Notification } from '@/types/ui';
 
+/**
+ * Página de gerenciamento de professores para administradores, permitindo criar, editar e excluir professores,
+ * além de visualizar as turmas atribuídas a cada professor.
+ * Funcionalidades principais:
+ * - Listagem de professores com detalhes básicos.
+ * - Modal para criação de novos professores.
+ * - Modal para visualização e edição de detalhes do professor selecionado.
+ * - Ação de exclusão de professor com confirmação.
+ * - Visualização das turmas atribuídas a cada professor.
+ * - Notificações para feedback de ações realizadas.
+ */
 export default function AdminTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);

@@ -18,6 +18,12 @@ import { IoMdStopwatch } from '@/assets/icons';
 
 const slugs = databases.map((db) => db.slug);
 
+/**
+ * Página principal do aluno para uma trilha específica,
+ * É onde o aluno interage com as questões, visualiza o enunciado, insere a consulta SQL
+ * e recebe feedback imediato sobre a validade da resposta,
+ * além de comparar os resultados obtidos com os esperados.
+ */
 export default function Home() {
   const params = useParams();
   const slug = Array.isArray(params.slug)
@@ -33,12 +39,10 @@ export default function Home() {
     number | null
   >(null);
 
-  // Usado pelo Header para montar o painel de visualização
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
 
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // Novos estados para separar as feitas das puladas
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const [skippedIds, setSkippedIds] = useState<number[]>([]);
 
@@ -69,7 +73,6 @@ export default function Home() {
   }, [questionId, isLoading, isQuestionCompleted]);
 
   const fetchAllQuestions = useCallback(
-    // Recebe justProcessedId e wasSkipped para lidar com a atualização imediata da UI
     async (justProcessedId?: number, wasSkipped: boolean = false) => {
       if (!slug) return;
 
@@ -82,11 +85,9 @@ export default function Home() {
       try {
         const [questions, progressSubmissions] = await Promise.all([
           StudentService.getQuestionsByScenario(slug),
-          // Usando o novo método detalhado
           StudentService.getProgressSubmissions(slug),
         ]);
 
-        // Mapeia do backend quem foi feito normalmente e quem foi pulado
         const backendCompleted = progressSubmissions
           .filter((p: any) => p.student_sql !== 'SKIP')
           .map((p: any) => p.question_id);
@@ -98,7 +99,6 @@ export default function Home() {
         const currentCompleted = [...backendCompleted];
         const currentSkipped = [...backendSkipped];
 
-        // Adiciona a questão processada agorinha mesmo caso haja um delay no banco
         if (justProcessedId) {
           if (wasSkipped && !currentSkipped.includes(justProcessedId)) {
             currentSkipped.push(justProcessedId);
@@ -113,16 +113,13 @@ export default function Home() {
         setCompletedIds(currentCompleted);
         setSkippedIds(currentSkipped);
 
-        // Array unificado das questões já tratadas (feitas ou puladas)
         const allProcessedIds = [...currentCompleted, ...currentSkipped];
 
-        // Passa todas as questões para o Header
         setAllQuestions(questions);
 
         const specials = questions.filter((q: any) => q.is_special);
         const normals = questions.filter((q: any) => !q.is_special);
 
-        // Filtragem para achar a próxima disponível
         const uncompletedSpecials = specials
           .filter((q: any) => !allProcessedIds.includes(q.id))
           .sort((a: any, b: any) => a.question_number - b.question_number);
@@ -131,7 +128,6 @@ export default function Home() {
           .filter((q: any) => !allProcessedIds.includes(q.id))
           .sort((a: any, b: any) => a.question_number - b.question_number);
 
-        // Lógica para pegar a próxima questão: sempre Especiais primeiro
         let questionToSelect = null;
 
         if (uncompletedSpecials.length > 0) {
@@ -193,7 +189,6 @@ export default function Home() {
         setMessage('');
         setIsLoading(false);
 
-        // Marca como concluída apenas se estiver nos completedIds (não nas puladas)
         setIsQuestionCompleted(completedIds.includes(selectedQuestion.id));
         setElapsedTime(0);
       }
@@ -226,7 +221,6 @@ export default function Home() {
         setIsQuestionCompleted(true);
         setCompletedIds((prev) => Array.from(new Set([...prev, questionId])));
 
-        // Remove dos pulados caso o aluno tenha voltado pra fazer de novo
         setSkippedIds((prev) => prev.filter((id) => id !== questionId));
       }
 
@@ -256,7 +250,6 @@ export default function Home() {
     try {
       await StudentService.skipQuestion(questionId);
       setMessage('Questão pulada. Carregando próxima...');
-      // Passamos `true` para sinalizar que o processamento dessa ID foi via "SKIP"
       await fetchAllQuestions(questionId, true);
     } catch (err: any) {
       setMessage(

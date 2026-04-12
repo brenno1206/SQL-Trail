@@ -1,9 +1,8 @@
 import { api } from '@/lib/api';
 
 export const AdminService = {
-  // ==========================
   // ADMIN CRUD
-  // ==========================
+
   createAdmin: async (adminData: {
     name: string;
     email: string;
@@ -40,9 +39,7 @@ export const AdminService = {
     return response.data;
   },
 
-  // ==========================
   // TEACHER CRUD
-  // ==========================
   getAllTeachers: async () => {
     const response = await api.get('/auth/teachers');
     return response.data;
@@ -76,9 +73,7 @@ export const AdminService = {
     return response.data;
   },
 
-  // ==========================
-  // STUDENT CRUD
-  // ==========================
+  // ALUNO CRUD
   getAllStudents: async () => {
     const response = await api.get('/auth/students');
     return response.data;
@@ -109,9 +104,7 @@ export const AdminService = {
     return response.data;
   },
 
-  // ==========================
-  // CLASS CRUD
-  // ==========================
+  // CLASSE CRUD
   getAllClasses: async () => {
     const response = await api.get('/classrooms/');
     return response.data;
@@ -144,9 +137,7 @@ export const AdminService = {
     return response.data;
   },
 
-  // ==========================
-  // ENROLLMENT OPERATIONS
-  // ==========================
+  // GERENCIAMENTO DE MATRÍCULAS
   getStudentsInClass: async (classId: number) => {
     const response = await api.get(`/classrooms/${classId}/students`);
     return response.data;
@@ -186,9 +177,7 @@ export const AdminService = {
     return response.data;
   },
 
-  // ==========================
-  // SCENARIO CRUD
-  // ==========================
+  // CENÁRIO CRUD
   getAllScenarios: async () => {
     const response = await api.get('/scenarios');
     return response.data;
@@ -225,9 +214,7 @@ export const AdminService = {
     return response.data;
   },
 
-  // ==========================
-  // QUESTION CRUD
-  // ==========================
+  // QUESTÕES CRUD
   getAllQuestions: async () => {
     const response = await api.get('/questions');
     return response.data;
@@ -267,9 +254,7 @@ export const AdminService = {
     return response.data;
   },
 
-  // ==========================
-  // TESTING & VALIDATION
-  // ==========================
+  // TESTES DE VALIDAÇÃO
   validateTestingQuery: async (testingData: {
     slug: string;
     question_id: number;
@@ -279,9 +264,7 @@ export const AdminService = {
     return response.data;
   },
 
-  // ==========================
-  // REPORTS & METRICS
-  // ==========================
+  // MÉTRICAS & RELATÓRIOS
   getGlobalMetrics: async (params?: {
     scenario_id?: number;
     class_id?: number;

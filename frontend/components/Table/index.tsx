@@ -1,5 +1,6 @@
 import { TableData } from '@/types/Table';
 
+/** Componente de tabela de resultado das queries */
 export function Table({ data }: { data: TableData | null }) {
   if (!data || data.rows.length === 0) {
     return (

@@ -1,6 +1,9 @@
 import { databases } from '@/types/databases';
 import DatabaseCard from '@/components/DatabaseCard';
 
+/**
+ * Componente de dashboard dos estudantes
+ */
 export default function StudentDashboard({ userName }: { userName: string }) {
   return (
     <>

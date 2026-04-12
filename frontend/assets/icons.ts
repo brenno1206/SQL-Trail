@@ -21,8 +21,6 @@ export {
   LuTestTubeDiagonal, // Teste
 } from 'react-icons/lu';
 
-// https://react-icons.github.io/react-icons/icons/io/
-
 export {
   FaMap, // Mapa
   FaDatabase, // Banco de dados
@@ -36,3 +34,7 @@ export {
   MdLogout, // Logout
   MdLogin, // Login
 } from 'react-icons/md';
+
+/** Ícones */
+
+// https://react-icons.github.io/react-icons/icons/io/

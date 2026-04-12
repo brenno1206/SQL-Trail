@@ -1,3 +1,7 @@
+/**
+ * Define os tipos de dados com base nos modelos do banco de dados
+ */
+
 export interface Student {
   id: number;
   name: string;

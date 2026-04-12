@@ -1,5 +1,8 @@
 import { Submission } from './models';
 
+/**
+ * Métricas mais detalhadas de uma questão específica por classe
+ */
 export interface DetailedQuestionMetric {
   question_id: number;
   metrics: {
@@ -16,6 +19,9 @@ export interface DetailedQuestionMetric {
   };
 }
 
+/**
+ * Progresso geral do aluno/
+ */
 export interface ProgressData {
   total_available_questions: number;
   total_solved_questions: number;
@@ -23,6 +29,9 @@ export interface ProgressData {
   scenario_name?: string;
 }
 
+/**
+ * Métricas de uma questão específica.
+ */
 export interface QuestionMetric {
   question_id: number;
   total_attempts: number;

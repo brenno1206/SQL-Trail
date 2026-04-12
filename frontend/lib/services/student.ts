@@ -1,9 +1,7 @@
 import { api } from '@/lib/api';
 
 export const StudentService = {
-  // ==========================
-  // SCENARIOS
-  // ==========================
+  // CENÁRIOS & QUESTÕES
   getAllScenarios: async () => {
     const response = await api.get('/scenarios');
     return response.data;
@@ -19,9 +17,6 @@ export const StudentService = {
     return response.data;
   },
 
-  // ==========================
-  // QUESTIONS
-  // ==========================
   getQuestionsByScenario: async (slug: string) => {
     const response = await api.get(`/questions/${slug}`);
     return response.data;
@@ -37,9 +32,7 @@ export const StudentService = {
     return response.data;
   },
 
-  // ==========================
-  // VALIDATION & SUBMISSION
-  // ==========================
+  // VALIDAÇÃO DE RESPOSTAS
   validateQuery: async (validationData: {
     slug: string;
     question_id: number;
@@ -55,9 +48,7 @@ export const StudentService = {
     return response.data;
   },
 
-  // ==========================
-  // METRICS & PROGRESS
-  // ==========================
+  // RELATÓRIOS & PROGRESSO
   getMetrics: async (slug: string) => {
     const scenario = await StudentService.getScenarioBySlug(slug);
     const response = await api.get(

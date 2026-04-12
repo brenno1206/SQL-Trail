@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
+import { Notification } from '@/types/ui';
 
-interface ToastProps {
-  message: string;
-  type: 'success' | 'error' | 'warning';
+interface ToastProps extends Notification {
   onClose?: () => void;
 }
 
+/** Componente de Toast/Notificação */
 export default function Toast({ message, type, onClose }: ToastProps) {
   const bgColor =
     type === 'success'

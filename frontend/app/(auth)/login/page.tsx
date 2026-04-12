@@ -7,6 +7,9 @@ import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
+/**
+ * Página de login para alunos, professores e administradores, permitindo acesso seguro ao sistema.
+ */
 export default function LoginPage() {
   const { login, firstAccess, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();

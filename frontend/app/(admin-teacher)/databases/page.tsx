@@ -14,6 +14,10 @@ import { Question, Scenario } from '@/types/models';
 import { Notification } from '@/types/ui';
 import { QuestionMetric } from '@/types/metrics';
 
+/**
+ * Página de gerenciamento de databases e questões para administradores e professores.
+ * Permite criar, editar e excluir databases (cenários) e questões, além de visualizar métricas de desempenho.
+ */
 export default function DatabasesPage() {
   const { user } = useAuth();
 

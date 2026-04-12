@@ -7,6 +7,7 @@ interface CodeAreaProps {
   validarConsulta: () => void;
 }
 
+/** Componente de área de código para digitação das consultas SQL */
 export default function CodeArea({
   sqlQuery,
   onEditorChange,

@@ -11,6 +11,7 @@ interface ProtectedRouteProps {
   allowedRoles?: Role[];
 }
 
+/** Componente de rota protegida */
 export default function ProtectedRoute({
   children,
   allowedRoles,

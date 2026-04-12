@@ -19,9 +19,16 @@ import {
 import { Class, Scenario, Question, Student } from '@/types/models';
 import { Notification } from '@/types/ui';
 import { DetailedQuestionMetric } from '@/types/metrics';
-
-// ORDERNAR QUESTOES POR ESPECIAIS -> QUESTION NUMBER DENTRO DE CADA GRUPO (ESPECIAIS E NORMAIS) PARA MELHOR NAVEGACAO DO PROFESSOR
-
+/**
+ * Página de gerenciamento de turmas para professores, permitindo criar, editar e excluir turmas, além de visualizar detalhes 
+ * como alunos matriculados e métricas de desempenho. Os professores podem:
+- Criar novas turmas com nome, disciplina e ano/semestre.
+- Editar informações de turmas existentes.
+- Excluir turmas, removendo todos os vínculos.
+- Visualizar detalhes de cada turma, incluindo alunos matriculados e métricas de desempenho por questão.
+- Matricular alunos individualmente ou em lote via upload de arquivo.
+ *  
+ */
 export default function TeacherClassesPage() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);

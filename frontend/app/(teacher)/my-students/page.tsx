@@ -12,6 +12,14 @@ import { Student, Class, Scenario } from '@/types/models';
 import { ProgressData } from '@/types/metrics';
 import { Notification } from '@/types/ui';
 
+/**
+ * Página para professores visualizarem seus alunos, filtrar por turma e acessar métricas de desempenho.
+ * Permite que o professor veja o progresso geral do aluno e o progresso específico por cenário.
+ * Utiliza o serviço de professor para buscar dados e exibir notificações em caso de erros.
+ * A interface é responsiva e amigável, com opções de ordenação e filtragem para facilitar a navegação.
+ * O professor pode clicar em um aluno para abrir um modal com suas métricas de desempenho.
+ * A página é protegida e acessível apenas para usuários com o papel de professor.
+ */
 export default function TeacherStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);

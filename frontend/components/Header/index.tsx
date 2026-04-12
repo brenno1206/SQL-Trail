@@ -22,6 +22,12 @@ interface HeaderProps {
   onQuestionSelect?: (id: number) => void;
 }
 
+/** Componente de cabeçalho
+ * - Exibe o título do SQL Trail
+ * - Botão para abrir o modal de progresso (se houver questões)
+ * - Botão para abrir o modal do mapa conceitual (se houver questões)
+ * - Menu lateral com informações do usuário e opções de navegação
+ */
 export default function Header({
   slug,
   allQuestions,

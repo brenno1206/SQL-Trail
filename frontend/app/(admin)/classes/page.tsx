@@ -19,8 +19,11 @@ import { Class, Teacher, Scenario, Question, Student } from '@/types/models';
 import { DetailedQuestionMetric } from '@/types/metrics';
 import { Notification } from '@/types/ui';
 
-// ORDERNAR QUESTOES POR ESPECIAIS -> QUESTION NUMBER DENTRO DE CADA GRUPO (ESPECIAIS E NORMAIS) PARA MELHOR NAVEGACAO DO PROFESSOR
-
+/**
+ * Página de gerenciamento de turmas para administradores,
+ * permitindo criar, editar, excluir turmas e gerenciar matrículas de alunos,
+ * além de visualizar métricas de desempenho por turma.
+ */
 export default function AdminClassesPage() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);

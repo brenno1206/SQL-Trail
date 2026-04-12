@@ -7,6 +7,7 @@ interface ResultCardProps {
   footer: string;
 }
 
+/** Componente de cartão de resultado das queries */
 export function ResultCard({ footer, placeholder, result }: ResultCardProps) {
   return (
     <main>

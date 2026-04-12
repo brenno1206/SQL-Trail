@@ -11,6 +11,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
+/** Contexto de Gerenciamento de Autenticação */
+
 type User = {
   name: string;
   role: string;

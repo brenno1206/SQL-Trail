@@ -12,6 +12,7 @@ interface DatabaseCardProps {
   title: string;
 }
 
+/** Componente de cartão de banco de dados para seleção do estudante */
 export default function DatabaseCard({ slug, title }: DatabaseCardProps) {
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

@@ -14,25 +14,27 @@ import { teacherService } from '@/lib/services/teacher';
 import { useAuth } from '@/contexts/AuthContext';
 import { Question, Scenario } from '@/types/models';
 
+/**
+ * Página de Validação de Queries para Professores e Administradores
+ *
+ * Esta página permite que professores e administradores testem consultas SQL contra questões específicas.
+ * O usuário seleciona um cenário (database) e uma questão, insere sua consulta SQL, e a ferramenta valida
+ * a consulta comparando o resultado com o gabarito esperado. Feedback detalhado é fornecido para ajudar
+ * no processo de aprendizado e correção.
+ */
 export default function TestingValidatorPage() {
-  // Pega o usuário logado para descobrir o role
   const { user } = useAuth();
 
-  // Define dinamicamente o serviço com base no cargo.
-  // O fallback para teacherService previne erros enquanto o AuthContext carrega.
   const apiService = user?.role === 'admin' ? AdminService : teacherService;
 
-  // --- Estados de Dados ---
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
 
-  // --- Estados de Seleção ---
   const [selectedScenarioId, setSelectedScenarioId] = useState<number | ''>('');
   const [selectedQuestionId, setSelectedQuestionId] = useState<number | ''>('');
   const [sqlQuery, setSqlQuery] = useState<string>('');
 
-  // --- Estados de Execução e Resultado ---
   const [isTesting, setIsTesting] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | 'info'>(
@@ -44,9 +46,7 @@ export default function TestingValidatorPage() {
   const [testingFooter, setTestingFooter] = useState('');
   const [baseFooter, setBaseFooter] = useState('');
 
-  // --- Carregamento Inicial ---
   useEffect(() => {
-    // Só tenta carregar se tivermos um usuário (evita chamadas duplas no mount)
     if (!user) return;
 
     const loadData = async () => {
@@ -68,9 +68,8 @@ export default function TestingValidatorPage() {
       }
     };
     loadData();
-  }, [user, apiService]); // Adiciona dependências corretas
+  }, [user, apiService]);
 
-  // --- Filtros Derivados ---
   const filteredQuestions = questions
     .filter((q) => q.scenario_database_id === Number(selectedScenarioId))
     .sort((a, b) => a.question_number - b.question_number);
@@ -82,14 +81,12 @@ export default function TestingValidatorPage() {
     (s) => s.id === Number(selectedScenarioId),
   );
 
-  // Limpa a seleção de questão quando o cenário muda
   useEffect(() => {
     setSelectedQuestionId('');
     setSqlQuery('');
     resetResults();
   }, [selectedScenarioId]);
 
-  // Limpa os resultados e preenche a query com a expected_query para facilitar o teste
   useEffect(() => {
     resetResults();
     if (selectedQuestion) {
@@ -126,7 +123,6 @@ export default function TestingValidatorPage() {
     setMessage('Validando consulta...');
 
     try {
-      // Chama o método dinamicamente (admin ou teacher)
       const response = await apiService.validateTestingQuery({
         slug: selectedScenario.slug || '',
         question_id: selectedQuestion.id,
@@ -172,7 +168,6 @@ export default function TestingValidatorPage() {
     }
   };
 
-  // Retorna null ou um loading visual para não quebrar a tela enquanto o ProtectedRoute verifica a sessão
   if (!user) {
     return null;
   }
@@ -183,7 +178,6 @@ export default function TestingValidatorPage() {
         <Header />
 
         <main className="flex flex-1 flex-col gap-6 px-6 py-8 md:px-10 md:flex-row max-w-[1600px] mx-auto w-full">
-          {/* LADO ESQUERDO: Controles e Editor */}
           <section className="flex flex-col space-y-4 md:w-1/2">
             <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
@@ -198,7 +192,6 @@ export default function TestingValidatorPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  {/* Select do Scenario */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Cenário (Database)
@@ -221,7 +214,6 @@ export default function TestingValidatorPage() {
                     </select>
                   </div>
 
-                  {/* Select da Questão */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Questão
@@ -250,7 +242,6 @@ export default function TestingValidatorPage() {
                 </div>
               )}
 
-              {/* Display do Enunciado */}
               {selectedQuestion && (
                 <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-md dark:bg-gray-700 dark:border-blue-400">
                   <p className="text-sm text-gray-800 dark:text-gray-100">
@@ -261,7 +252,6 @@ export default function TestingValidatorPage() {
               )}
             </div>
 
-            {/* Editor de SQL */}
             <div className="flex-1 min-h-[300px]">
               <div className="mb-2 flex justify-between items-center px-1">
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -285,7 +275,6 @@ export default function TestingValidatorPage() {
             </div>
           </section>
 
-          {/* LADO DIREITO: Resultados */}
           <section className="flex flex-col space-y-6 md:w-1/2">
             <div
               className={`p-4 rounded-lg shadow-sm border font-medium ${

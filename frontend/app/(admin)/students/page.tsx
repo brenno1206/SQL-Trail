@@ -11,6 +11,15 @@ import { Student, Class, Scenario } from '@/types/models';
 import { Notification } from '@/types/ui';
 import { ProgressData } from '@/types/metrics';
 
+/**
+ * Página de gerenciamento de alunos para administradores, permitindo criar, editar, excluir alunos,
+ * filtrar por turma e visualizar métricas de desempenho.
+ * Funcionalidades principais:
+ * - Listagem de alunos com filtros por turma e ordenação.
+ * - Modal para criação e edição de alunos.
+ * - Visualização de métricas de desempenho geral e por cenário.
+ * - Notificações para feedback de ações realizadas.
+ */
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);

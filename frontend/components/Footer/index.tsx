@@ -1,3 +1,4 @@
+/** Componente de rodapé */
 export default function Footer() {
   return (
     <footer className="flex h-15 shrink-0 items-center justify-between bg-blue-900 px-10 py-4 text-white shadow-md">

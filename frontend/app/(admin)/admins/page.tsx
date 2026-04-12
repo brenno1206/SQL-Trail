@@ -10,6 +10,17 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { Admin } from '@/types/models';
 import { Notification } from '@/types/ui';
 
+/**
+ * Página de gerenciamento de administradores. Permite criar, editar e excluir administradores do sistema.
+ * Funcionalidades:
+ * - Listagem de administradores existentes
+ * - Criação de novo administrador com nome, email e senha provisória
+ * - Edição de informações do administrador (nome, email e senha)
+ * - Exclusão de administrador com confirmação
+ * - Feedback visual para ações realizadas (sucesso/erro)
+ *
+ * Acesso restrito a usuários com papel "admin".
+ */
 export default function AdminAdminsPage() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
