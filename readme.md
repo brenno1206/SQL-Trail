@@ -2,21 +2,23 @@
 
 ### Projeto de Iniciação Científica
 
-**Uma abordagem prática para o aprendizado de SQL**
+**Uma abordagem prática e progressiva para o aprendizado de SQL**
 
 ---
 
 ## 📌 Sobre o Projeto
 
-O **SQL Trail** é uma aplicação educacional voltada ao ensino prático de SQL por meio da resolução progressiva de desafios com feedback imediato.
+O **SQL Trail** é uma plataforma educacional web voltada ao ensino prático de SQL por meio da resolução progressiva de desafios com **feedback imediato**.
 
-A plataforma web simula diferentes cenários de bancos de dados relacionais, permitindo a execução e validação de consultas SQL submetidas pelo usuário, proporcionando uma experiência próxima a situações reais de mercado.
+A aplicação simula cenários reais de bancos de dados relacionais, permitindo que usuários executem consultas SQL diretamente no navegador e recebam validação automática, promovendo aprendizado ativo e orientado à prática.
+
+O sistema conta com **autenticação e controle de acesso**, possibilitando diferentes perfis de uso, como alunos, professores e administradores.
 
 ---
 
 ## 🏗️ Arquitetura da Aplicação
 
-A aplicação é dividida em frontend, backend e banco de dados:
+A aplicação segue uma arquitetura moderna baseada em separação de responsabilidades:
 
 ### 🎨 Frontend
 
@@ -24,121 +26,105 @@ Desenvolvido com:
 
 - React
 - TypeScript
-- Next.js
+- Next.js (App Router)
 - Tailwind CSS
-
-A interface permite que os usuários executem consultas SQL diretamente no navegador, acompanhem seu progresso e recebam feedback imediato.
-
-### ⚙️ Backend
-
-Implementado em:
-
-- Python
-- Flask
 
 Responsável por:
 
-- Processar consultas SQL submetidas pelos usuários
-- Validar respostas
-- Controlar o progresso nos desafios
-- Executar verificações adicionais quando necessário
+- Interface interativa para execução de queries SQL
+- Dashboards específicos por perfil (Admin, Professor e Aluno)
+- Controle de autenticação no cliente
+- Proteção de rotas (Protected Routes)
+- Visualização de progresso, resultados e métricas
+
+---
+
+### ⚙️ Backend
+
+Desenvolvido com:
+
+- Python
+- Flask (Application Factory Pattern)
+- API RESTful
+
+Responsável por:
+
+- Autenticação e autorização de usuários
+- Processamento e validação de queries SQL
+- Gerenciamento de desafios, turmas e usuários
+- Geração de relatórios e métricas
+- Organização modular por domínio (`auth`, `classrooms`, `reports`, etc.)
+
+A API segue boas práticas REST e organização em camadas:
+
+- `routes` → definição dos endpoints
+- `services` → regras de negócio
+- `decorators` → controle de acesso e autenticação
+
+---
 
 ### 🗄️ Banco de Dados
 
-- PostgreSQL (em nuvem)
-- Plataforma: Supabase
+- MySQL (TiDB Cloud)
 
-Os esquemas e dados são previamente definidos para cada conjunto de desafios.  
-Essa abordagem permite a execução real das consultas SQL, garantindo resultados consistentes e alinhados a cenários práticos.
+Responsável por:
 
----
-
-## 📂 Estrutura dos Desafios
-
-Os desafios são definidos em um arquivo `JSON` carregado durante a inicialização do sistema.
-
-Cada banco de dados simulado:
-
-- Possui uma **slug única**
-- Contém um conjunto de questões
-
-Cada questão possui:
-
-- Identificador
-- Enunciado
-- Consulta SQL considerada correta
-- Nível de dificuldade proporcional ao identificador
+- Armazenamento de usuários e autenticação
+- Persistência de desafios e bancos simulados
+- Controle de progresso dos alunos
+- Dados de turmas e relatórios
 
 ---
 
-## 🔍 Processo de Validação das Consultas
+## 🔐 Sistema de Autenticação
 
-Após a submissão da consulta pelo usuário, o backend executa as seguintes etapas:
+A aplicação possui autenticação completa com:
 
-1. Verificação da existência da consulta submetida
-2. Validação se a instrução é do tipo `SELECT`
-3. Execução da consulta no banco de dados simulado
-4. Comparação sintática com a consulta correta (quando necessário)
-5. Comparação dos resultados obtidos com os resultados esperados
-6. Validação adicional com um modelo de linguagem de grande porte (LLM), caso as verificações anteriores não sejam conclusivas
-
----
-
-## 🎯 Estrutura de Progressão
-
-Os desafios foram organizados para abranger desde conceitos introdutórios até tópicos avançados da linguagem SQL.
-
-### 🟢 Níveis Iniciais (1–10)
-
-- Consultas básicas
-- Cláusulas `FROM` e `WHERE`
-- Compreensão do esquema do banco de dados
-
-### 🟡 Níveis Intermediários (11–30)
-
-- `COUNT`
-- `ORDER BY`
-- `GROUP BY`
-- `AVG`
-- `DISTINCT`
-- `LIMIT`
-- `JOIN`
-- Condições mais elaboradas na cláusula `WHERE`
-
-### 🔴 Níveis Avançados (31–40)
-
-- Junções múltiplas
-- Common Table Expressions (CTE)
-- Integração de múltiplos conceitos
+- Login de usuários
+- Controle de sessão/token
+- Proteção de rotas no frontend e backend
+- Diferentes níveis de acesso:
+  - Aluno
+  - Professor
+  - Administrador
 
 ---
 
-## 💬 Feedback Imediato
+## 📂 Estrutura do Projeto
 
-Após cada submissão:
-
-- A instrução SQL é executada
-- O sistema informa se a solução está correta
-
-Os bancos simulados abrangem diferentes contextos, como:
-
-- Ambiente acadêmico
-- Departamentos de recursos humanos
-
-Isso proporciona variedade de cenários e amplia a experiência prática do estudante.
+```bash
+.
+├── backend/
+│   ├── app/
+│   │   ├── auth/          # Autenticação e autorização
+│   │   ├── classrooms/    # Gerenciamento de turmas
+│   │   ├── database/      # Modelos e conexão
+│   │   ├── main/          # Lógica principal (queries/desafios)
+│   │   ├── reports/       # Relatórios e métricas
+│   │   └── config/        # Configurações
+│   └── app.py             # Inicialização (Application Factory)
+│
+├── frontend/
+│   ├── app/               # Rotas (App Router)
+│   │   ├── (auth)/        # Login
+│   │   ├── (student)/     # Área do aluno
+│   │   ├── (teacher)/     # Área do professor
+│   │   ├── (admin)/       # Área administrativa
+│   │   └── (admin-teacher)/
+│   │
+│   ├── components/        # Componentes reutilizáveis
+│   ├── contexts/          # Context API (Auth)
+│   ├── lib/               # Integração com API
+│   └── types/             # Tipagens TypeScript
+│
+└── README.md
+```
 
 ---
 
-## 🚀 Objetivo
+## ▶️ Como executar o Projeto
 
-O SQL Trail busca tornar o aprendizado de SQL mais:
-
-- Interativo
-- Prático
-- Progressivo
-- Próximo de situações reais
-
-Promovendo autonomia e reforçando o aprendizado por meio da prática contínua.
+- [Visualizar instruções de execução](execution.md)
 
 ## 📜 License
 
