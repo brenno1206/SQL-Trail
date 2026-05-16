@@ -1,6 +1,6 @@
 # SQL Trail
 
-### Projeto de Iniciação Científica
+### Projeto de Iniciação Científica - Ciclo de 2025/2 à 2026/1
 
 **Uma abordagem prática e progressiva para o aprendizado de SQL**
 
@@ -125,6 +125,22 @@ A aplicação possui autenticação completa com:
 ## ▶️ Como executar o Projeto
 
 - [Visualizar instruções de execução](execution.md)
+
+---
+
+## 📋 TO DOS
+
+- Alterar o banco de dados da aplicação. Ao invés de uma tabela para cada papel, utilizar uma tabela user e outra tabela role.
+- Adicionar mais cenários de questões
+- Analisar se vale a pens mudar do posgree para mysql
+- Adicionar TRI as questões
+- Ordem das questões deve mudar de acordo como usuário
+- Recolher o coeficiente de rendimento e notas em disciplinas de BD do aluno
+- Adicionar NoSQL com MongoDB
+- Adicionar camadas de proteção e tratamento derros, tanto no fornt quanto no back
+- Testes da aplicação com alunos para recolher dados para o TRI
+
+---
 
 ## 📜 License
 

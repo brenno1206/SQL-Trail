@@ -993,14 +993,10 @@ def create_first_admin():
     with app.app_context():
         print("=== Configuração do Primeiro Administrador ===")
 
-        name = 'admin'
-        email = 'admin@mail.com'
-        password = 'admin'
-
         data = {
-            "name": name.strip(),
-            "email": email.strip(),
-            "password": password
+            "name": 'admin',
+            "email": 'admin@mail.com',
+            "password": 'admin'
         }
 
         success, response = AuthService.create_admin(data)
