@@ -50,7 +50,7 @@ export default function DatabasesPage() {
     id: 0,
     statement: '',
     expected_query: '',
-    question_number: 1,
+    question_order: 1,
     is_special: false,
   });
 
@@ -191,7 +191,7 @@ export default function DatabasesPage() {
         scenario_database_id: selectedScenario.id,
         statement: questionFormData.statement || '',
         expected_query: questionFormData.expected_query || '',
-        question_number: questionFormData.question_number,
+        question_order: questionFormData.question_order,
         is_special: questionFormData.is_special,
       };
 
@@ -237,7 +237,7 @@ export default function DatabasesPage() {
       if (a.is_special !== b.is_special) {
         return a.is_special ? -1 : 1;
       }
-      return a.question_number - b.question_number;
+      return a.question_order - b.question_order;
     });
 
   return (
@@ -377,7 +377,7 @@ export default function DatabasesPage() {
                         id: 0,
                         statement: '',
                         expected_query: '',
-                        question_number: 1,
+                        question_order: 1,
                         is_special: false,
                       });
                       setIsQuestionModalOpen(true);
@@ -409,14 +409,14 @@ export default function DatabasesPage() {
                             <div className="flex gap-2 items-center">
                               <span
                                 className={`text-xs px-2 py-0.5 rounded font-bold ${
-                                  q.question_number <= 10
+                                  q.question_order <= 10
                                     ? 'bg-green-100 text-green-800'
-                                    : q.question_number <= 30
+                                    : q.question_order <= 30
                                       ? 'bg-yellow-100 text-yellow-800'
                                       : 'bg-red-100 text-red-800'
                                 }`}
                               >
-                                Questão {q.question_number}
+                                Questão {q.question_order}
                               </span>
                               {q.is_special && (
                                 <span className="text-xs px-2 py-0.5 rounded font-bold bg-purple-200 text-purple-800">
@@ -431,7 +431,7 @@ export default function DatabasesPage() {
                                     id: q.id,
                                     statement: q.statement || '',
                                     expected_query: q.expected_query || '',
-                                    question_number: q.question_number,
+                                    question_order: q.question_order,
                                     is_special: q.is_special,
                                   });
                                   setIsQuestionModalOpen(true);
@@ -644,11 +644,11 @@ export default function DatabasesPage() {
                     max="100"
                     required
                     className="mt-1 block w-full border rounded p-2"
-                    value={questionFormData.question_number}
+                    value={questionFormData.question_order}
                     onChange={(e) =>
                       setQuestionFormData({
                         ...questionFormData,
-                        question_number: Number(e.target.value),
+                        question_order: Number(e.target.value),
                       })
                     }
                   />

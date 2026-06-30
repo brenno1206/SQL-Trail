@@ -165,7 +165,6 @@ class QuestionService:
             if 'difficulty' in data: question.difficulty = data['difficulty']
             if 'is_special' in data: question.is_special = data['is_special']
             
-            # Limpa submissões para não corromper histórico do CAT se a ordem mudar drasticamente
             db.session.query(Submission).filter_by(question_id=question_id).delete()
             db.session.commit()
             db.session.refresh(question)
@@ -200,10 +199,31 @@ class SubmissionService:
     """Gerencia as sessões de avaliação adaptativa (CAT) e submissões dos alunos."""
     
     @staticmethod
+    def _get_adaptive_state_payload(session, student_id):
+        """Função auxiliar para montar o payload de estado, incluindo questões puladas."""
+        correct_qs = db.session.query(Submission.question_id).filter_by(
+            student_id=student_id, 
+            adaptive_session_id=session.id, 
+            is_correct=True, 
+            is_skipped=False
+        )
+        
+        skipped_qs = db.session.query(Question.question_order).join(Submission).filter(
+            Submission.student_id == student_id,
+            Submission.adaptive_session_id == session.id,
+            Submission.is_skipped == True,
+            ~Question.id.in_(correct_qs)
+        ).all()
+
+        return {
+            "is_finished": session.is_finished,
+            "mastered_until": session.highest_mastered_order,
+            "skipped_orders": [r[0] for r in skipped_qs]
+        }
+
+    @staticmethod
     def get_or_start_adaptive_session(student_id, scenario_id):
-        """Recupera a sessão ativa do aluno ou inicializa uma nova busca binária."""
         try:
-            # 1. Verifica se já existe uma sessão em andamento
             active_session = db.session.query(AdaptiveSession).filter_by(
                 student_id=student_id, 
                 scenario_database_id=scenario_id, 
@@ -215,9 +235,11 @@ class SubmissionService:
                     scenario_database_id=scenario_id, 
                     question_order=active_session.current_question_order
                 ).first()
-                return True, {"session_id": active_session.id, "question": current_question}
+                payload = SubmissionService._get_adaptive_state_payload(active_session, student_id)
+                payload["session_id"] = active_session.id
+                payload["question"] = current_question
+                return True, payload
 
-            # 2. Se não existir, prepara uma nova sessão CAT
             max_order = db.session.query(func.max(Question.question_order)).filter_by(
                 scenario_database_id=scenario_id
             ).scalar() or 0
@@ -226,7 +248,7 @@ class SubmissionService:
                 return False, {"error": "Cenário não possui questões cadastradas."}
 
             initial_lowest_failed = max_order + 1
-            start_order = initial_lowest_failed // 2 # Inicia no meio da árvore pedagógica
+            start_order = initial_lowest_failed // 2 
 
             new_session = AdaptiveSession(
                 student_id=student_id,
@@ -243,8 +265,11 @@ class SubmissionService:
                 scenario_database_id=scenario_id, 
                 question_order=start_order
             ).first()
-
-            return True, {"session_id": new_session.id, "question": first_question}
+            
+            payload = SubmissionService._get_adaptive_state_payload(new_session, student_id)
+            payload["session_id"] = new_session.id
+            payload["question"] = first_question
+            return True, payload
             
         except SQLAlchemyError as e:
             db.session.rollback()
@@ -252,9 +277,7 @@ class SubmissionService:
 
     @staticmethod
     def submit_adaptive_answer(student_id, session_id, question_id, time_spent, submitted_query, is_correct, output, is_skipped=False):
-        """Registra a resposta, recalcula a proficiência do aluno e decide a próxima questão baseada na busca binária."""
         try:
-            # 1. Busca sessão e questão
             session = db.session.query(AdaptiveSession).filter_by(id=session_id, is_finished=False).first()
             if not session:
                 return False, {"error": "Sessão adaptativa não encontrada ou já finalizada."}
@@ -264,13 +287,10 @@ class SubmissionService:
                 return False, {"error": "Questão não encontrada."}
 
             current_order = question.question_order
-
-            # Verifica número da tentativa para esta questão na sessão atual
             attempt_number = db.session.query(Submission).filter_by(
                 student_id=student_id, question_id=question_id, adaptive_session_id=session_id
             ).count() + 1
 
-            # 2. Salva a Submissão
             submission = Submission(
                 student_id=student_id,
                 question_id=question_id,
@@ -283,30 +303,54 @@ class SubmissionService:
                 execution_output=json.dumps(output) if output else None
             )
             db.session.add(submission)
+            db.session.commit()
 
-            # 3. Recalcula os limites da Busca Binária
-            if is_correct and not is_skipped:
-                session.highest_mastered_order = max(session.highest_mastered_order, current_order)
-            else:
-                session.lowest_failed_order = min(session.lowest_failed_order, current_order)
+            if current_order != session.current_question_order:
+                payload = SubmissionService._get_adaptive_state_payload(session, student_id)
+                current_q = db.session.query(Question).filter_by(
+                    scenario_database_id=session.scenario_database_id, 
+                    question_order=session.current_question_order
+                ).first()
+                payload["next_question"] = current_q
+                payload["msg"] = "Modo prática: Resposta salva. Seu progresso na trilha não foi alterado."
+                return True, payload
 
-            # 4. Encontra o novo ponto médio
             H = session.highest_mastered_order
             L = session.lowest_failed_order
-            next_order = (H + L) // 2
+            MAX_ORDER = db.session.query(func.max(Question.question_order)).filter_by(scenario_database_id=session.scenario_database_id).scalar() or 0
+            
+            is_converged = (L - H <= 1)
 
-            # 5. Critério de Parada (Convergência)
-            if (L - H <= 1) or (next_order == current_order):
+            if is_correct and not is_skipped:
+                H = max(H, current_order)
+                if L <= H:
+                    L = MAX_ORDER + 1
+            elif is_skipped:
+                if is_converged:
+                    H = max(H, current_order)
+                    L = MAX_ORDER + 1
+                else:
+                    L = min(L, current_order)
+            else:
+                L = min(L, current_order)
+
+            session.highest_mastered_order = H
+            session.lowest_failed_order = L
+            
+            if L - H > 1:
+                next_order = (H + L) // 2
+            else:
+                next_order = H + 1
+
+            if next_order > MAX_ORDER:
                 session.is_finished = True
                 session.current_question_order = None
                 db.session.commit()
-                return True, {
-                    "finished": True, 
-                    "mastered_until": H,
-                    "msg": "Avaliação adaptativa concluída! Nível de proficiência calculado."
-                }
+                payload = SubmissionService._get_adaptive_state_payload(session, student_id)
+                payload["next_question"] = None
+                payload["msg"] = "Você concluiu toda a trilha de aprendizado!"
+                return True, payload
 
-            # 6. Atualiza estado e busca próxima questão
             session.current_question_order = next_order
             db.session.commit()
 
@@ -315,15 +359,15 @@ class SubmissionService:
                 question_order=next_order
             ).first()
 
-            return True, {
-                "finished": False, 
-                "next_question": next_question,
-                "msg": "Progresso atualizado. Enviando próxima questão."
-            }
-
+            payload = SubmissionService._get_adaptive_state_payload(session, student_id)
+            payload["next_question"] = next_question
+            payload["msg"] = "Progresso salvo. Próxima questão carregada."
+            
+            return True, payload
         except SQLAlchemyError as e:
             db.session.rollback()
-            return False, {"error": f"Erro ao processar submissão: {str(e)}"}
+            return False, {"error": f"Erro ao processar submissão: {str(e)}"}      
+
 
 # =========================================================================
 # SUPABASE SERVICE & SQL GRADER (NÃO UTILIZAM SQLALCHEMY)

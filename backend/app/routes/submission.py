@@ -1,5 +1,5 @@
 from flask import request, jsonify, Blueprint
-from flask_jwt_extended import get_jwt_identity, get_jwt
+from flask_jwt_extended import get_jwt
 from app.services.submission_service import ScenarioDatabaseService, QuestionService, SubmissionService, SupabaseService, SQLGrader
 from app.utils.decorators import role_required
 
@@ -78,7 +78,6 @@ def get_scenario(slug):
 @role_required('admin', 'teacher')
 def update_scenario(slug):
     data = request.get_json() or {}
-    # Nota: Precisaria do ID para atualizar no service novo, então buscamos pelo slug primeiro
     success_scen, scenario = ScenarioDatabaseService.get_scenario_by_slug(slug)
     if not success_scen: return jsonify({"error": "Cenário não encontrado"}), 404
     
@@ -162,7 +161,6 @@ def get_questions_by_scenario(slug):
 def get_adaptive_state(slug):
     """
     Inicia uma sessão CAT ou retorna a questão atual caso o aluno já tenha começado.
-    O frontend deve chamar essa rota ao abrir a página do cenário.
     """
     claims = get_jwt()
     student_id = claims.get('user_id')
@@ -176,21 +174,22 @@ def get_adaptive_state(slug):
         return jsonify(result), 500
 
     return jsonify({
-        "session_id": result["session_id"],
-        "current_question": serialize_question(result["question"])
+        "session_id": result.get("session_id"),
+        "current_question": serialize_question(result.get("question")),
+        "mastered_until": result.get("mastered_until", 0),
+        "skipped_orders": result.get("skipped_orders", []),
+        "is_finished": result.get("is_finished", False)
     }), 200
-
 @submission_bp.route('/validate', methods=['POST'])
 @role_required('student')
 def validate():
-    """Valida a consulta, registra no histórico CAT e avança a busca binária."""
     claims = get_jwt()
     student_id = claims.get('user_id')
     data = request.get_json() or {}
     
     slug = data.get('slug')
     q_id = data.get('question_id')
-    session_id = data.get('session_id') # NOVO REQUISITO: O frontend deve enviar isso
+    session_id = data.get('session_id')
     time_spent = data.get('time_spent_seconds', 0)
     student_sql = (data.get('student_sql') or '').strip()
 
@@ -215,22 +214,17 @@ def validate():
     if not client:
         return jsonify({'error': f'Credenciais para o slug {slug} não encontradas.'}), 404
 
-    # 1. Executa Query do Aluno
     stu_res = SupabaseService.execute_query(client, student_sql, max_rows=0)
     if stu_res.get('error'):
-        # Mesmo com erro de SQL, é considerado erro lógico na busca binária
         SubmissionService.submit_adaptive_answer(student_id, session_id, q_id, time_spent, student_sql, False, stu_res['error'])
         return jsonify({'valid': False, 'error': stu_res['error'], 'statement': statement}), 200
         
-    # 2. Executa Query Base
     base_res = SupabaseService.execute_query(client, expected_sql, max_rows=0)
     if base_res.get('error'):
         return jsonify({'valid': False, 'error': f"Erro na base: {base_res['error']}", 'statement': statement}), 500
 
-    # 3. Compara Resultados
     is_valid, msg = SQLGrader.compare(expected_sql, student_sql, base_res, stu_res)
     
-    # 4. Registra no CAT e obtém próxima ação
     success_save, adaptive_result = SubmissionService.submit_adaptive_answer(
         student_id=student_id, 
         session_id=session_id, 
@@ -251,11 +245,11 @@ def validate():
         'statement': statement,
         'result_table': stu_res,
         'expected_table': base_res,
-        # Dados do CAT para o Frontend atualizar a tela
         'adaptive_state': {
-            'is_finished': adaptive_result.get("finished"),
+            'is_finished': adaptive_result.get("is_finished"),
             'next_question': serialize_question(adaptive_result.get("next_question")),
             'mastered_until': adaptive_result.get("mastered_until"),
+            'skipped_orders': adaptive_result.get("skipped_orders", []),
             'cat_message': adaptive_result.get("msg")
         }
     }), 200
@@ -263,7 +257,6 @@ def validate():
 @submission_bp.route('/validate/skip', methods=['POST'])
 @role_required('student')
 def skip_question_route():
-    """Pula a questão: considera como erro no cálculo do CAT e envia uma mais fácil."""
     claims = get_jwt()
     student_id = claims.get('user_id')
     data = request.get_json() or {}
@@ -274,7 +267,6 @@ def skip_question_route():
     if not all([question_id, session_id]):
         return jsonify({"error": "Parâmetros question_id e session_id são obrigatórios."}), 400
     
-    # Pular envia is_correct=False e is_skipped=True
     success, adaptive_result = SubmissionService.submit_adaptive_answer(
         student_id=student_id,
         session_id=session_id,
@@ -293,9 +285,10 @@ def skip_question_route():
         "valid": True, 
         "message": "Questão pulada. Reajustando nível...",
         "adaptive_state": {
-            'is_finished': adaptive_result.get("finished"),
+            'is_finished': adaptive_result.get("is_finished"),
             'next_question': serialize_question(adaptive_result.get("next_question")),
             'mastered_until': adaptive_result.get("mastered_until"),
+            'skipped_orders': adaptive_result.get("skipped_orders", []),
             'cat_message': adaptive_result.get("msg")
         }
     }), 200

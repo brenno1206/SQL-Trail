@@ -277,7 +277,7 @@ export default function AdminClassesPage() {
       const s = scenarios.find((sc) => sc.id === q?.scenario_database_id);
       return {
         ...m,
-        question_number: q?.question_number || 0,
+        question_order: q?.question_order || 0,
         is_special: q?.is_special || false,
         scenario_name: s?.name || 'Sem Cenário Vinculado',
       };
@@ -315,7 +315,7 @@ export default function AdminClassesPage() {
       <div className="flex justify-between items-center border-b pb-2">
         <div className="flex items-baseline gap-2">
           <span className="font-bold text-gray-800 text-lg">
-            Questão {m.question_number}
+            Questão {m.question_order}
           </span>
         </div>
         <span
@@ -893,12 +893,12 @@ export default function AdminClassesPage() {
                             const specialQs = metricsList
                               .filter((m) => m.is_special)
                               .sort(
-                                (a, b) => a.question_number - b.question_number,
+                                (a, b) => a.question_order - b.question_order,
                               );
                             const normalQs = metricsList
                               .filter((m) => !m.is_special)
                               .sort(
-                                (a, b) => a.question_number - b.question_number,
+                                (a, b) => a.question_order - b.question_order,
                               );
 
                             return (

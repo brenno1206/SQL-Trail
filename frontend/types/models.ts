@@ -33,18 +33,27 @@ export interface Scenario {
   id: number;
   name: string;
   slug?: string;
+  diagram_url?: string;
 }
 
 export interface Question {
   id: number;
-  question_number: number;
-  is_special: boolean;
   scenario_database_id?: number;
-  slug?: string;
   statement?: string;
   expected_query?: string;
+  question_order: number;
+  difficulty: number;
+  is_special: boolean;
 }
-// SubmissionsPerQuestion
+
+export interface AdaptiveState {
+  is_finished: boolean;
+  next_question: Question | null;
+  mastered_until: number;
+  skipped_orders: number[];
+  cat_message: string;
+}
+
 export interface Submission {
   student_id: number;
   total_attempts: number;

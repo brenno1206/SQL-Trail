@@ -72,7 +72,7 @@ export default function TestingValidatorPage() {
 
   const filteredQuestions = questions
     .filter((q) => q.scenario_database_id === Number(selectedScenarioId))
-    .sort((a, b) => a.question_number - b.question_number);
+    .sort((a, b) => a.question_order - b.question_order);
 
   const selectedQuestion = questions.find(
     (q) => q.id === Number(selectedQuestionId),
@@ -233,7 +233,7 @@ export default function TestingValidatorPage() {
                       <option value="">-- Selecione uma questão --</option>
                       {filteredQuestions.map((q) => (
                         <option key={q.id} value={q.id}>
-                          Questão {q.question_number}{' '}
+                          Questão {q.question_order}{' '}
                           {q.is_special ? '(Especial)' : ''}
                         </option>
                       ))}

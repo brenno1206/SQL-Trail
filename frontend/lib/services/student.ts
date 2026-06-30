@@ -1,7 +1,10 @@
 import { api } from '@/lib/api';
 
 export const StudentService = {
-  // CENÁRIOS & QUESTÕES
+  // =========================================================================
+  // CENÁRIOS & BUSCAS GERAIS
+  // =========================================================================
+
   getAllScenarios: async () => {
     const response = await api.get('/scenarios');
     return response.data;
@@ -9,11 +12,6 @@ export const StudentService = {
 
   getScenarioBySlug: async (slug: string) => {
     const response = await api.get(`/scenarios/${slug}`);
-    return response.data;
-  },
-
-  checkSpecialCompletion: async (slug: string) => {
-    const response = await api.get(`/scenarios/${slug}/special-completed`);
     return response.data;
   },
 
@@ -32,23 +30,46 @@ export const StudentService = {
     return response.data;
   },
 
-  // VALIDAÇÃO DE RESPOSTAS
+  checkSpecialCompletion: async (slug: string) => {
+    const response = await api.get(`/scenarios/${slug}/special-completed`);
+    return response.data;
+  },
+
+  // =========================================================================
+  // FLUXO DO TESTE ADAPTATIVO (CAT)
+  // =========================================================================
+
+  getAdaptiveState: async (slug: string) => {
+    // Busca a sessão ativa ou cria uma nova e devolve a questão exata
+    const response = await api.get(`/adaptive/${slug}/start-or-next`);
+    return response.data;
+  },
+
   validateQuery: async (validationData: {
     slug: string;
     question_id: number;
+    session_id: number; // Obrigatório para a busca binária
     time_spent_seconds?: number;
     student_sql: string;
   }) => {
     const response = await api.post('/validate', validationData);
+    // Agora essa resposta também trará o objeto 'adaptive_state'
     return response.data;
   },
 
-  skipQuestion: async (question_id: number) => {
-    const response = await api.post('/validate/skip', { question_id });
+  skipQuestion: async (skipData: {
+    question_id: number;
+    session_id: number; // Obrigatório para registrar o pulo como limite de falha
+  }) => {
+    const response = await api.post('/validate/skip', skipData);
+    // Também devolve o novo 'adaptive_state' com a questão mais fácil
     return response.data;
   },
 
+  // =========================================================================
   // RELATÓRIOS & PROGRESSO
+  // =========================================================================
+
   getMetrics: async (slug: string) => {
     const scenario = await StudentService.getScenarioBySlug(slug);
     const response = await api.get(
