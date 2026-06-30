@@ -1,7 +1,7 @@
 from flask import request, jsonify, Blueprint
 from flask_jwt_extended import get_jwt
-from .services import ReportService
-from app.auth.decorators import role_required
+from app.services.reports_service import ReportService
+from app.utils.decorators import role_required
 
 reports_bp = Blueprint('reports', __name__)
 

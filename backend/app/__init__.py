@@ -8,16 +8,10 @@ def create_app():
     from app.config import init_app as init_config
     init_config(app)
 
-    from app.main import init_app as init_main
-    init_main(app)
+    from app.database import init_app as init_database
+    init_database(app)
 
-    from app.auth import init_app as init_auth
-    init_auth(app)
-
-    from app.classrooms import init_app as init_classrooms
-    init_classrooms(app)
-
-    from app.reports import init_app as init_reports
-    init_reports(app)
+    from app.routes import init_app as init_routes
+    init_routes(app)
     
     return app

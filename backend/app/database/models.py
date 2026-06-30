@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, text, ForeignKey, Text, Boolean, CheckConstraint
+from sqlalchemy import Column, Integer, String, TIMESTAMP, text, ForeignKey, Text, Boolean
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -58,8 +58,20 @@ class Question(Base):
     scenario_database_id = Column(Integer, ForeignKey('scenario_databases.id', ondelete='CASCADE'), nullable=False)
     statement = Column(Text, nullable=False)
     expected_query = Column(Text, nullable=False)
-    question_number = Column(Integer, nullable=False)
+    question_order = Column(Integer, nullable=False) # Ordem pedagógica
+    difficulty = Column(Integer, nullable=False)     # Nível da habilidade
     is_special = Column(Boolean, default=False)
+    created_at = Column(TIMESTAMP, server_default=text('CURRENT_TIMESTAMP'))
+
+class AdaptiveSession(Base):
+    __tablename__ = 'adaptive_sessions'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    student_id = Column(Integer, ForeignKey('students.id', ondelete='CASCADE'), nullable=False)
+    scenario_database_id = Column(Integer, ForeignKey('scenario_databases.id', ondelete='CASCADE'), nullable=False)
+    current_question_order = Column(Integer, nullable=True)
+    highest_mastered_order = Column(Integer, default=0)
+    lowest_failed_order = Column(Integer, nullable=True)
+    is_finished = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP, server_default=text('CURRENT_TIMESTAMP'))
 
 class Submission(Base):
@@ -67,8 +79,11 @@ class Submission(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     student_id = Column(Integer, ForeignKey('students.id', ondelete='CASCADE'), nullable=False)
     question_id = Column(Integer, ForeignKey('questions.id', ondelete='CASCADE'), nullable=False)
+    adaptive_session_id = Column(Integer, ForeignKey('adaptive_sessions.id', ondelete='CASCADE'), nullable=True)
     time_spent_seconds = Column(Integer, nullable=False)
-    submitted_query = Column(Text, nullable=False)
+    submitted_query = Column(Text, nullable=True)
     is_correct = Column(Boolean, nullable=False, default=False)
+    is_skipped = Column(Boolean, nullable=False, default=False)
+    attempt_number = Column(Integer, default=1)
     execution_output = Column(Text, nullable=True)
     submitted_at = Column(TIMESTAMP, server_default=text('CURRENT_TIMESTAMP'))

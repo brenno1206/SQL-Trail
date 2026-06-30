@@ -1,7 +1,7 @@
 from flask import request, jsonify, Blueprint
 from flask_jwt_extended import get_jwt
-from .services import ClassroomService
-from app.auth.decorators import role_required 
+from app.services.classroom_service import ClassroomService
+from app.utils.decorators import role_required 
 import pandas as pd # type: ignore
 import io
 

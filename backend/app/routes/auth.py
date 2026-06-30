@@ -1,8 +1,7 @@
-# /app/auth/routes.py
 from flask import request, jsonify, Blueprint
 from flask_jwt_extended import create_access_token
-from app.auth.services import AuthService
-from app.auth.decorators import role_required
+from app.services.auth_service import AuthService
+from app.utils.decorators import role_required
 
 auth_bp = Blueprint('auth', __name__)
 
