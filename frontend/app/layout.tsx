@@ -32,21 +32,9 @@ export const metadata: Metadata = {
     title: 'SQL Trail',
     description:
       'O seu guia interativo para aprender SQL com trilhas de exercícios.',
-    url: '',
     siteName: 'SQL Trail',
-    images: [
-      {
-        url: '',
-        width: 1200,
-        height: 630,
-        alt: 'SQL Trail',
-      },
-    ],
     locale: 'pt_BR',
     type: 'website',
-  },
-  icons: {
-    icon: '@/app/favicon.ico',
   },
 };
 

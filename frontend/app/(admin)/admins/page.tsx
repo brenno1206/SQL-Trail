@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
@@ -6,6 +5,7 @@ import Header from '@/components/Header';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { AdminService } from '@/lib/services/admin';
 import Toast from '@/components/Toast';
+import { getErrorMessage } from '@/lib/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Admin } from '@/types/models';
 import { Notification } from '@/types/ui';
@@ -50,8 +50,10 @@ export default function AdminAdminsPage() {
       const adminsData = await AdminService.getAllAdmins();
       setAdmins(adminsData);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      showNotification('Erro ao carregar administradores.', 'error');
+      showNotification(
+        getErrorMessage(error, 'Erro ao carregar administradores.'),
+        'error',
+      );
     } finally {
       setLoading(false);
     }
@@ -76,8 +78,10 @@ export default function AdminAdminsPage() {
       });
       await loadData();
     } catch (error) {
-      console.error(error);
-      showNotification('Erro ao criar administrador.', 'error');
+      showNotification(
+        getErrorMessage(error, 'Erro ao criar administrador.'),
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -89,7 +93,7 @@ export default function AdminAdminsPage() {
     setIsSubmitting(true);
 
     try {
-      const payload: any = {
+      const payload: { name: string; email: string; password?: string } = {
         name: formData.name,
         email: formData.email,
       };
@@ -102,8 +106,10 @@ export default function AdminAdminsPage() {
 
       setSelectedAdmin({ ...selectedAdmin, ...payload });
     } catch (error) {
-      console.error(error);
-      showNotification('Erro ao editar administrador.', 'error');
+      showNotification(
+        getErrorMessage(error, 'Erro ao editar administrador.'),
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -127,8 +133,10 @@ export default function AdminAdminsPage() {
       setSelectedAdmin(null);
       await loadData();
     } catch (error) {
-      console.error(error);
-      showNotification('Erro ao excluir administrador.', 'error');
+      showNotification(
+        getErrorMessage(error, 'Erro ao excluir administrador.'),
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -251,6 +259,7 @@ export default function AdminAdminsPage() {
                 </label>
                 <input
                   type="password"
+                  minLength={6}
                   required
                   className="mt-1 block w-full border rounded p-2"
                   value={formData.password}
@@ -338,6 +347,7 @@ export default function AdminAdminsPage() {
                     </label>
                     <input
                       type="password"
+                      minLength={6}
                       disabled={isSubmitting}
                       className="mt-1 block w-full border rounded p-2 disabled:bg-gray-100"
                       value={formData.password}

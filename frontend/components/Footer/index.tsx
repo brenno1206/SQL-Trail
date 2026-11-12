@@ -5,7 +5,7 @@ export default function Footer() {
       <span className="text-xs font-thin">
         Desenvolvido por alunos da Universidade Vila Velha
       </span>
-      <span className="font-thin">&copy;</span>
+      <span className="font-thin">2026 &middot; &copy;</span>
     </footer>
   );
 }

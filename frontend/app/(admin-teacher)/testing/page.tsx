@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,6 +12,8 @@ import { AdminService } from '@/lib/services/admin';
 import { teacherService } from '@/lib/services/teacher';
 import { useAuth } from '@/contexts/AuthContext';
 import { Question, Scenario } from '@/types/models';
+import { TableDataWithTotal } from '@/types/Table';
+import { getErrorMessage } from '@/lib/api';
 
 /**
  * Página de Validação de Queries para Professores e Administradores
@@ -41,8 +42,10 @@ export default function TestingValidatorPage() {
     'info',
   );
 
-  const [testingResult, setTestingResult] = useState<any>(null);
-  const [baseResult, setBaseResult] = useState<any>(null);
+  const [testingResult, setTestingResult] = useState<TableDataWithTotal | null>(
+    null,
+  );
+  const [baseResult, setBaseResult] = useState<TableDataWithTotal | null>(null);
   const [testingFooter, setTestingFooter] = useState('');
   const [baseFooter, setBaseFooter] = useState('');
 
@@ -58,9 +61,9 @@ export default function TestingValidatorPage() {
         ]);
         setScenarios(scenariosData);
         setQuestions(questionsData);
-      } catch (error: any) {
+      } catch (error) {
         setMessage(
-          'Erro ao carregar cenários e questões. ' + (error.message || ''),
+          getErrorMessage(error, 'Erro ao carregar cenários e questões.'),
         );
         setMessageType('error');
       } finally {
@@ -124,7 +127,6 @@ export default function TestingValidatorPage() {
 
     try {
       const response = await apiService.validateTestingQuery({
-        slug: selectedScenario.slug || '',
         question_id: selectedQuestion.id,
         testing_sql: sqlQuery,
       });
@@ -141,27 +143,19 @@ export default function TestingValidatorPage() {
 
       if (response.result_table?.data) {
         setTestingResult(response.result_table.data);
-        setTestingFooter(
-          `Retornou ${response.result_table.data.rows?.length || 0} de ${response.result_table.data.total_rows || 0} linhas.`,
-        );
       } else if (response.result_table?.error) {
         setTestingFooter(`Erro SQL: ${response.result_table.error}`);
       }
 
       if (response.expected_table?.data) {
         setBaseResult(response.expected_table.data);
-        setBaseFooter(
-          `Retornou ${response.expected_table.data.rows?.length || 0} de ${response.expected_table.data.total_rows || 0} linhas.`,
-        );
       } else if (response.expected_table?.error) {
         setBaseFooter(`Erro no Gabarito: ${response.expected_table.error}`);
       }
-    } catch (error: any) {
-      const errorMsg =
-        error.response?.data?.error ||
-        error.message ||
-        'Erro ao comunicar com a API.';
-      setMessage(`Erro na validação: ${errorMsg}`);
+    } catch (error) {
+      setMessage(
+        `Erro na validação: ${getErrorMessage(error, 'Erro ao comunicar com a API.')}`,
+      );
       setMessageType('error');
     } finally {
       setIsTesting(false);

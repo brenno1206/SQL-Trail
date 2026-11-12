@@ -1,4 +1,10 @@
-import { TableData } from '@/types/Table';
+import { TableCell, TableData } from '@/types/Table';
+
+function formatCell(cell: TableCell) {
+  if (cell === null || cell === undefined) return null;
+  if (typeof cell === 'object') return JSON.stringify(cell);
+  return String(cell);
+}
 
 /** Componente de tabela de resultado das queries */
 export function Table({ data }: { data: TableData | null }) {
@@ -14,9 +20,9 @@ export function Table({ data }: { data: TableData | null }) {
     <table className="w-full border-collapse">
       <thead>
         <tr className="bg-gray-100">
-          {data.columns.map((col) => (
+          {data.columns.map((col, colIndex) => (
             <th
-              key={col}
+              key={`${colIndex}-${col}`}
               className="border border-gray-400 p-2 text-left font-bold text-gray-700 bg-gray-300"
             >
               {col}
@@ -27,14 +33,21 @@ export function Table({ data }: { data: TableData | null }) {
       <tbody>
         {data.rows.map((row, rowIndex) => (
           <tr key={rowIndex} className="odd:bg-white even:bg-gray-50">
-            {row.map((cell, cellIndex) => (
-              <td
-                key={`${rowIndex}-${cellIndex}`}
-                className="border border-gray-300 p-2 text-sm text-gray-600"
-              >
-                {String(cell)}
-              </td>
-            ))}
+            {row.map((cell, cellIndex) => {
+              const text = formatCell(cell);
+              return (
+                <td
+                  key={`${rowIndex}-${cellIndex}`}
+                  className="border border-gray-300 p-2 text-sm text-gray-600"
+                >
+                  {text === null ? (
+                    <span className="italic text-gray-400">NULL</span>
+                  ) : (
+                    text
+                  )}
+                </td>
+              );
+            })}
           </tr>
         ))}
       </tbody>

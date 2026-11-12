@@ -1,6 +1,8 @@
 from functools import wraps
-from flask import jsonify
+
+from flask import jsonify, request
 from flask_jwt_extended import get_jwt, verify_jwt_in_request
+
 
 def role_required(*allowed_roles):
     """
@@ -10,8 +12,8 @@ def role_required(*allowed_roles):
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
-            verify_jwt_in_request() 
-            
+            verify_jwt_in_request()
+
             claims = get_jwt()
             user_role = claims.get('role')
 
@@ -21,3 +23,26 @@ def role_required(*allowed_roles):
             return fn(*args, **kwargs)
         return decorator
     return wrapper
+
+
+def current_user():
+    """Retorna (role, user_id) do token JWT da requisição atual."""
+    claims = get_jwt()
+    return claims.get('role'), claims.get('user_id')
+
+
+def json_body():
+    """Corpo JSON da requisição como dicionário (vazio se ausente ou inválido)."""
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+
+def clean_str(value):
+    """Converte para string sem espaços nas pontas; valores não textuais viram ''."""
+    if value is None:
+        return ''
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        value = str(value)
+    if not isinstance(value, str):
+        return ''
+    return value.strip()

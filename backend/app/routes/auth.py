@@ -1,237 +1,234 @@
-from flask import request, jsonify, Blueprint
-from flask_jwt_extended import create_access_token
+from flask import jsonify, Blueprint
+
 from app.services.auth_service import AuthService
-from app.utils.decorators import role_required
+from app.services.classroom_service import ClassroomService
+from app.utils.decorators import role_required, current_user, json_body
+from app.utils.serializers import serialize_user
 
 auth_bp = Blueprint('auth', __name__)
 
-# FUNÇÃO AUXILIAR
-def serialize_user(user):
-    """Converte a instância do banco de dados em um dicionário seguro para JSON."""
-    if not user:
-        return None
-    data = {"id": user.id, "name": user.name}
-    if hasattr(user, 'email'):
-        data['email'] = user.email
-    if hasattr(user, 'registration_number'):
-        data['registration_number'] = user.registration_number
-    return data
 
-# ROTAS DE ADMINISTRADOR
+def _with_user(response, key):
+    response[key] = serialize_user(response.pop(key, None))
+    return response
+
+
+def _teacher_can_view(student_id):
+    """Professores só veem alunos matriculados em suas turmas."""
+    role, user_id = current_user()
+    return role == 'admin' or (role == 'teacher' and ClassroomService.teacher_has_student(user_id, student_id))
+
+
+def _teacher_can_manage(student_id):
+    """Alterações exigem que o aluno esteja apenas em turmas do professor (ou ser admin)."""
+    role, user_id = current_user()
+    return role == 'admin' or (role == 'teacher' and ClassroomService.teacher_manages_student(user_id, student_id))
+
+
+_SHARED_STUDENT_ERROR = ("Acesso negado. Só é possível alterar alunos matriculados exclusivamente nas suas "
+                         "turmas; para alunos compartilhados com outros professores, procure o administrador.")
+
+
+# =========================================================================
+# ADMINISTRADORES
+# =========================================================================
 
 @auth_bp.route('/admin', methods=['POST'])
 @role_required('admin')
 def register_admin():
-    """Rota para criar um novo administrador."""
-    data = request.get_json()
-    success, response = AuthService.create_admin(data)
-
+    success, response = AuthService.create_admin(json_body())
     if not success:
         return jsonify(response), 400
-    
-    response['admin'] = serialize_user(response.pop('admin', None))
-    return jsonify(response), 201
+    return jsonify(_with_user(response, 'admin')), 201
+
 
 @auth_bp.route('/admin/<int:admin_id>', methods=['GET'])
 @role_required('admin')
 def get_admin(admin_id):
-    """Rota para buscar um administrador pelo ID."""
     success, result = AuthService.get_admin(admin_id)
     if not success:
         return jsonify(result), 404
     return jsonify({"admin": serialize_user(result)}), 200
 
+
 @auth_bp.route('/admin/<int:admin_id>', methods=['PUT'])
 @role_required('admin')
 def update_admin(admin_id):
-    """Rota para atualizar um administrador pelo ID."""
-    data = request.get_json()
-    success, response = AuthService.update_admin(admin_id, data)
+    success, response = AuthService.update_admin(admin_id, json_body())
     if not success:
-        return jsonify(response), 400
-    
-    response['admin'] = serialize_user(response.pop('admin', None))
-    return jsonify(response), 200
+        return jsonify(response), 404 if 'não encontrado' in response.get('error', '') else 400
+    return jsonify(_with_user(response, 'admin')), 200
+
 
 @auth_bp.route('/admin/<int:admin_id>', methods=['DELETE'])
 @role_required('admin')
 def delete_admin(admin_id):
-    """Rota para deletar um administrador pelo ID."""
-    success, response = AuthService.delete_admin(admin_id)
+    _, requester_id = current_user()
+    success, response = AuthService.delete_admin(admin_id, requester_id)
     if not success:
-        return jsonify(response), 404
+        status = response.pop('status', 400)
+        return jsonify(response), status
     return jsonify(response), 200
+
 
 @auth_bp.route('/admins', methods=['GET'])
 @role_required('admin')
 def get_all_admins():
-    """Rota para listar todos os administradores cadastrados."""
     success, result = AuthService.get_all_admins()
-    
     if success:
         return jsonify([serialize_user(admin) for admin in result]), 200
-        
     return jsonify(result), 500
 
 
-# ROTAS DE PROFESSOR
+# =========================================================================
+# PROFESSORES
+# =========================================================================
 
 @auth_bp.route('/teacher', methods=['POST'])
 @role_required('admin')
 def register_teacher():
-    """Rota para criar um novo professor."""
-    data = request.get_json()
-    success, response = AuthService.create_teacher(data)
-
+    success, response = AuthService.create_teacher(json_body())
     if not success:
         return jsonify(response), 400
-    
-    response['teacher'] = serialize_user(response.pop('teacher', None))
-    return jsonify(response), 201
+    return jsonify(_with_user(response, 'teacher')), 201
+
 
 @auth_bp.route('/teacher/<int:teacher_id>', methods=['GET'])
 @role_required('admin', 'teacher')
 def get_teacher(teacher_id):
-    """Rota para buscar um professor pelo ID."""
+    role, user_id = current_user()
+    if role == 'teacher' and user_id != teacher_id:
+        return jsonify({"error": "Acesso negado."}), 403
     success, result = AuthService.get_teacher(teacher_id)
     if not success:
         return jsonify(result), 404
     return jsonify({"teacher": serialize_user(result)}), 200
 
+
 @auth_bp.route('/teacher/<int:teacher_id>', methods=['PUT'])
 @role_required('admin')
 def update_teacher(teacher_id):
-    """Rota para atualizar um professor pelo ID."""
-    data = request.get_json()
-    success, response = AuthService.update_teacher(teacher_id, data)
+    success, response = AuthService.update_teacher(teacher_id, json_body())
     if not success:
-        return jsonify(response), 400
-    
-    response['teacher'] = serialize_user(response.pop('teacher', None))
-    return jsonify(response), 200
+        return jsonify(response), 404 if 'não encontrado' in response.get('error', '') else 400
+    return jsonify(_with_user(response, 'teacher')), 200
+
 
 @auth_bp.route('/teacher/<int:teacher_id>', methods=['DELETE'])
 @role_required('admin')
 def delete_teacher(teacher_id):
-    """Rota para deletar um professor pelo ID."""
     success, response = AuthService.delete_teacher(teacher_id)
     if not success:
-        return jsonify(response), 404
+        return jsonify(response), 404 if 'não encontrado' in response.get('error', '') else 500
     return jsonify(response), 200
 
 
-# ROTAS DE ALUNO
+@auth_bp.route('/teachers', methods=['GET'])
+@role_required('admin')
+def get_all_teachers():
+    success, result = AuthService.get_all_teachers()
+    if success:
+        return jsonify([serialize_user(t) for t in result]), 200
+    return jsonify(result), 500
+
+
+# =========================================================================
+# ALUNOS
+# =========================================================================
 
 @auth_bp.route('/student', methods=['POST'])
-@role_required('admin', 'teacher')
+@role_required('admin')
 def register_student():
-    """Rota para criar um novo aluno."""
-    data = request.get_json()
-    success, response = AuthService.create_student(data)
-    
+    """Cadastro avulso de aluno (professores cadastram alunos ao matriculá-los nas turmas)."""
+    success, response = AuthService.create_student(json_body())
     if not success:
         return jsonify(response), 400
-    
-    response['student'] = serialize_user(response.pop('student', None))
-    return jsonify(response), 201
+    return jsonify(_with_user(response, 'student')), 201
+
 
 @auth_bp.route('/student/<int:student_id>', methods=['GET'])
 @role_required('admin', 'teacher', 'student')
 def get_student(student_id):
-    """Rota para buscar um aluno pelo ID."""
+    role, user_id = current_user()
+    if role == 'student' and user_id != student_id:
+        return jsonify({"error": "Acesso negado."}), 403
+    if role == 'teacher' and not _teacher_can_view(student_id):
+        return jsonify({"error": "Acesso negado. O aluno não pertence às suas turmas."}), 403
     success, result = AuthService.get_student(student_id)
     if not success:
         return jsonify(result), 404
     return jsonify({"student": serialize_user(result)}), 200
 
+
 @auth_bp.route('/student/<int:student_id>', methods=['PUT'])
 @role_required('admin', 'teacher')
 def update_student(student_id):
-    """Rota para atualizar um aluno pelo ID."""
-    data = request.get_json()
-    success, response = AuthService.update_student(student_id, data)
+    role, _ = current_user()
+    if not _teacher_can_manage(student_id):
+        return jsonify({"error": _SHARED_STUDENT_ERROR}), 403
+    success, response = AuthService.update_student(student_id, json_body(), allow_password=(role == 'admin'))
     if not success:
-        return jsonify(response), 400
-    
-    response['student'] = serialize_user(response.pop('student', None))
-    return jsonify(response), 200
+        return jsonify(response), 404 if 'não encontrado' in response.get('error', '') else 400
+    return jsonify(_with_user(response, 'student')), 200
+
+
+@auth_bp.route('/student/<int:student_id>/access-code', methods=['POST'])
+@role_required('admin', 'teacher')
+def regenerate_student_access_code(student_id):
+    """Gera um novo código de primeiro acesso (redefine a senha do aluno)."""
+    if not _teacher_can_manage(student_id):
+        return jsonify({"error": _SHARED_STUDENT_ERROR}), 403
+    success, response = AuthService.regenerate_access_code(student_id)
+    if not success:
+        return jsonify(response), 404 if 'não encontrado' in response.get('error', '') else 500
+    return jsonify(_with_user(response, 'student')), 200
+
 
 @auth_bp.route('/student/<int:student_id>', methods=['DELETE'])
-@role_required('admin', 'teacher')
+@role_required('admin')
 def delete_student(student_id):
-    """Rota para deletar um aluno pelo ID."""
     success, response = AuthService.delete_student(student_id)
     if not success:
-        return jsonify(response), 404
+        return jsonify(response), 404 if 'não encontrado' in response.get('error', '') else 500
     return jsonify(response), 200
 
-@auth_bp.route('/teachers', methods=['GET'])
-@role_required('admin')
-def get_all_teachers():
-    """Rota para listar todos os professores cadastrados."""
-    success, result = AuthService.get_all_teachers()
-    
-    if success:
-        return jsonify([serialize_user(teacher) for teacher in result]), 200
-        
-    return jsonify(result), 500
 
 @auth_bp.route('/students', methods=['GET'])
 @role_required('admin', 'teacher')
 def get_all_students():
-    """Rota para listar todos os alunos cadastrados."""
-    success, result = AuthService.get_all_students()
-    
+    """Admin: todos os alunos. Professor: apenas os alunos das suas turmas."""
+    role, user_id = current_user()
+    if role == 'teacher':
+        success, result = ClassroomService.get_students_of_teacher(user_id)
+    else:
+        success, result = AuthService.get_all_students()
     if success:
-        return jsonify([serialize_user(student) for student in result]), 200
-        
+        return jsonify([serialize_user(s) for s in result]), 200
     return jsonify(result), 500
 
-# ROTAS DE AUTENTICAÇÃO
+
+# =========================================================================
+# AUTENTICAÇÃO
+# =========================================================================
 
 @auth_bp.route('/student/first-access', methods=['POST'])
 def student_first_access():
-    """Rota para configurar o primeiro acesso de um aluno."""
-    data = request.get_json()
-    registration = data.get('registration_number')
-    new_password = data.get('new_password')
-    
-    if not registration or not new_password:
-        return jsonify({"error": "Matrícula e nova senha são obrigatórios"}), 400
-
-    success, response = AuthService.setup_student_first_access(registration, new_password)
-    
+    data = json_body()
+    success, response = AuthService.setup_student_first_access(
+        data.get('registration_number'), data.get('access_code'), data.get('new_password'))
     if not success:
-        status_code = 404 if "não encontrado" in response.get("error", "") else 400
-        return jsonify(response), status_code
-    
-    response['student'] = serialize_user(response.pop('student', None))    
-    return jsonify(response), 200
+        return jsonify(response), 400
+    return jsonify(_with_user(response, 'student')), 200
 
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    """Rota para autenticar um usuário e gerar um token JWT."""
-    data = request.get_json()
-    login_id = data.get('login_id')
-    password = data.get('password')
-    role = data.get('role')
-
+    data = json_body()
+    login_id, password, role = data.get('login_id'), data.get('password'), data.get('role')
     if not all([login_id, password, role]):
         return jsonify({"error": "login_id, password e role são obrigatórios"}), 400
 
-    success, result = AuthService.authenticate_user(login_id, password, role)
-
+    success, result = AuthService.login(login_id, password, role)
     if not success:
-        status_code = 404 if "não encontrado" in result.get("error", "") else 401
-        return jsonify(result), status_code
-
-    access_token = create_access_token(
-        identity=result['login_id'], 
-        additional_claims={
-            "role": result['role'],
-            "user_id": result['id']
-        }
-    )
-    
-    return jsonify(access_token=access_token, name=result['name']), 200 
+        return jsonify(result), 401
+    return jsonify(result), 200

@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, LOGOUT_REASON_KEY } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/lib/api';
+import { Role } from '@/types/models';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -16,10 +18,24 @@ export default function LoginPage() {
 
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('student');
+  const [role, setRole] = useState<Role>('student');
+  const [accessCode, setAccessCode] = useState('');
   const [isFirstAccess, setIsFirstAccess] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // Exibe o motivo de um logout automático (sessão expirada ou inatividade).
+    try {
+      const reason = sessionStorage.getItem(LOGOUT_REASON_KEY);
+      if (reason) {
+        sessionStorage.removeItem(LOGOUT_REASON_KEY);
+        setError(reason);
+      }
+    } catch {
+      /* armazenamento indisponível */
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -40,22 +56,27 @@ export default function LoginPage() {
 
     try {
       if (role === 'student' && isFirstAccess) {
-        await firstAccess(loginId, password);
+        if (!accessCode.trim()) {
+          setError(
+            'Informe o código de primeiro acesso fornecido pelo professor.',
+          );
+          return;
+        }
+        await firstAccess(loginId, accessCode.trim(), password);
         await login(loginId, password, role);
       } else {
         await login(loginId, password, role);
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      const mensagemBackend =
-        err.response?.data?.error || err.response?.data?.message;
-      setError(mensagemBackend || 'Erro na conexão ou credenciais inválidas.');
+    } catch (err) {
+      setError(
+        getErrorMessage(err, 'Erro na conexão ou credenciais inválidas.'),
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleRoleChange = (newRole: string) => {
+  const handleRoleChange = (newRole: Role) => {
     setRole(newRole);
     setIsFirstAccess(false);
     setError('');
@@ -69,7 +90,7 @@ export default function LoginPage() {
     );
   }
 
-  const roles = [
+  const roles: { id: Role; label: string }[] = [
     { id: 'student', label: 'Aluno' },
     { id: 'teacher', label: 'Professor' },
     { id: 'admin', label: 'Admin' },
@@ -116,7 +137,13 @@ export default function LoginPage() {
               <div>
                 <input
                   type="text"
-                  placeholder={role === 'admin' ? 'Email' : 'Matrícula'}
+                  placeholder={
+                    role === 'admin'
+                      ? 'Email'
+                      : role === 'teacher'
+                        ? 'Email ou matrícula'
+                        : 'Matrícula'
+                  }
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
                   disabled={isSubmitting}
@@ -125,10 +152,34 @@ export default function LoginPage() {
                 />
               </div>
 
+              {role === 'student' && isFirstAccess && (
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Código de primeiro acesso"
+                    value={accessCode}
+                    onChange={(e) =>
+                      setAccessCode(e.target.value.toUpperCase())
+                    }
+                    disabled={isSubmitting}
+                    autoComplete="one-time-code"
+                    className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg font-mono tracking-widest dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    O código é entregue pelo professor ao cadastrar você na
+                    turma.
+                  </p>
+                </div>
+              )}
               <div>
                 <input
                   type="password"
-                  placeholder={isFirstAccess ? 'Crie uma nova senha' : 'Senha'}
+                  placeholder={
+                    isFirstAccess
+                      ? 'Crie uma nova senha (mín. 6 caracteres)'
+                      : 'Senha'
+                  }
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isSubmitting}

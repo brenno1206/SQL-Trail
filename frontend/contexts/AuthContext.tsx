@@ -1,5 +1,4 @@
 'use client';
-
 import {
   createContext,
   useContext,
@@ -9,125 +8,173 @@ import {
   ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, UNAUTHORIZED_EVENT } from '@/lib/api';
+import { Role } from '@/types/models';
 
 /** Contexto de Gerenciamento de Autenticação */
-
 type User = {
+  id?: number;
   name: string;
-  role: string;
+  role: Role;
 };
 
 type AuthContextType = {
   user: User | null;
-  login: (login_id: string, password: string, role: string) => Promise<void>;
-  logout: () => void;
+  login: (login_id: string, password: string, role: Role) => Promise<void>;
+  logout: (reason?: string) => void;
   firstAccess: (
     registration_number: string,
+    access_code: string,
     new_password: string,
   ) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 };
+
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+
+/** Tempo máximo de inatividade antes do logout automático */
+const INACTIVITY_LIMIT = 30 * 60 * 1000;
+/** Intervalo mínimo entre gravações do horário da última atividade */
+const ACTIVITY_WRITE_INTERVAL = 30 * 1000;
+/** Chave usada para exibir o motivo do logout na tela de login */
+export const LOGOUT_REASON_KEY = 'logoutReason';
+
+function safeGet(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSet(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* armazenamento indisponível */
+  }
+}
+
+function safeRemove(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* armazenamento indisponível */
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('lastActivity');
-    setUser(null);
-    router.push('/login');
-  }, [router]);
+  const logout = useCallback(
+    (reason?: string) => {
+      safeRemove('token');
+      safeRemove('user');
+      safeRemove('lastActivity');
+      if (reason) {
+        try {
+          sessionStorage.setItem(LOGOUT_REASON_KEY, reason);
+        } catch {
+          /* ignore */
+        }
+      }
+      setUser(null);
+      router.push('/login');
+    },
+    [router],
+  );
 
   useEffect(() => {
-    const TIME_LIMIT = 30 * 60 * 1000;
+    // Restaura a sessão salva (apenas no cliente, fora do ciclo síncrono do efeito).
+    const restoreTimer = setTimeout(() => {
+      const token = safeGet('token');
+      const storedUser = safeGet('user');
+      const lastActivity = safeGet('lastActivity');
 
-    setTimeout(() => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      const lastActivity = localStorage.getItem('lastActivity');
-      const now = new Date().getTime();
-
-      if (lastActivity && now - parseInt(lastActivity) > TIME_LIMIT) {
-        logout();
-        setIsLoading(false);
-        return;
+      if (
+        lastActivity &&
+        Date.now() - parseInt(lastActivity) > INACTIVITY_LIMIT
+      ) {
+        logout('Sessão encerrada por inatividade.');
+      } else if (token && storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch {
+          logout();
+        }
       }
-
-      if (token && storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-
       setIsLoading(false);
     }, 0);
 
-    const atualizaAtividade = () => {
-      localStorage.setItem('lastActivity', new Date().getTime().toString());
+    let lastWrite = 0;
+    const registerActivity = () => {
+      const current = Date.now();
+      if (current - lastWrite > ACTIVITY_WRITE_INTERVAL) {
+        lastWrite = current;
+        safeSet('lastActivity', current.toString());
+      }
     };
 
-    const verificaInatividade = setInterval(() => {
-      const ultimaAcao = localStorage.getItem('lastActivity');
+    const inactivityCheck = setInterval(() => {
+      const last = safeGet('lastActivity');
       if (
-        ultimaAcao &&
-        new Date().getTime() - parseInt(ultimaAcao) > TIME_LIMIT
+        safeGet('token') &&
+        last &&
+        Date.now() - parseInt(last) > INACTIVITY_LIMIT
       ) {
-        logout();
+        logout('Sessão encerrada por inatividade.');
       }
-    }, 120000);
+    }, 60000);
 
-    window.addEventListener('mousemove', atualizaAtividade);
-    window.addEventListener('keydown', atualizaAtividade);
-    window.addEventListener('click', atualizaAtividade);
+    const onUnauthorized = (event: Event) => {
+      if (!safeGet('token')) return;
+      const detail = (event as CustomEvent<string | undefined>).detail;
+      logout(detail || 'Sua sessão expirou. Faça login novamente.');
+    };
+
+    window.addEventListener('mousemove', registerActivity);
+    window.addEventListener('keydown', registerActivity);
+    window.addEventListener('click', registerActivity);
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
 
     return () => {
-      window.removeEventListener('mousemove', atualizaAtividade);
-      window.removeEventListener('keydown', atualizaAtividade);
-      window.removeEventListener('click', atualizaAtividade);
-      clearInterval(verificaInatividade);
+      window.removeEventListener('mousemove', registerActivity);
+      window.removeEventListener('keydown', registerActivity);
+      window.removeEventListener('click', registerActivity);
+      window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+      clearInterval(inactivityCheck);
+      clearTimeout(restoreTimer);
     };
   }, [logout]);
 
   const firstAccess = async (
     registration_number: string,
+    access_code: string,
     new_password: string,
   ) => {
-    try {
-      await api.post('/auth/student/first-access', {
-        registration_number,
-        new_password,
-      });
-    } catch (error) {
-      console.error('Erro no primeiro acesso', error);
-      throw error;
-    }
+    await api.post('/auth/student/first-access', {
+      registration_number,
+      access_code,
+      new_password,
+    });
   };
 
-  const login = async (login_id: string, password: string, role: string) => {
-    try {
-      const response = await api.post('/auth/login', {
-        login_id,
-        password,
-        role,
-      });
-      const { access_token, name } = response.data;
-
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('lastActivity', new Date().getTime().toString());
-
-      const userData = { name, role };
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-
-      router.push('/');
-    } catch (error) {
-      console.error('Erro no login', error);
-      throw error;
-    }
+  const login = async (login_id: string, password: string, role: Role) => {
+    const response = await api.post('/auth/login', {
+      login_id,
+      password,
+      role,
+    });
+    const { access_token, name, id } = response.data;
+    safeSet('token', access_token);
+    safeSet('lastActivity', Date.now().toString());
+    const userData: User = { id, name, role };
+    safeSet('user', JSON.stringify(userData));
+    setUser(userData);
+    router.push('/');
   };
 
   return (

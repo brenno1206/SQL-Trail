@@ -1,24 +1,29 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { teacherService } from '@/lib/services/teacher';
+import { getErrorMessage } from '@/lib/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import Toast from '@/components/Toast'; //
-import { Student, Class, Scenario } from '@/types/models';
+import Toast from '@/components/Toast';
+import AccessCodesModal from '@/components/AccessCodesModal';
+import StudentProgressModal from '@/components/StudentProgressModal';
+import { Student, Class, Scenario, CreatedStudentCode } from '@/types/models';
 import { ProgressData } from '@/types/metrics';
 import { Notification } from '@/types/ui';
 
+/** "Todas as Minhas Turmas" usa /auth/students, que já retorna apenas os alunos do professor */
+const fetchStudents = (classFilter: string) =>
+  classFilter === 'all'
+    ? teacherService.getStudents()
+    : teacherService.getStudentsInClass(parseInt(classFilter));
+
 /**
- * Página para professores visualizarem seus alunos, filtrar por turma e acessar métricas de desempenho.
- * Permite que o professor veja o progresso geral do aluno e o progresso específico por cenário.
- * Utiliza o serviço de professor para buscar dados e exibir notificações em caso de erros.
- * A interface é responsiva e amigável, com opções de ordenação e filtragem para facilitar a navegação.
- * O professor pode clicar em um aluno para abrir um modal com suas métricas de desempenho.
- * A página é protegida e acessível apenas para usuários com o papel de professor.
+ * Página para professores visualizarem os alunos das suas turmas, filtrar por turma,
+ * acompanhar o desempenho e gerar novos códigos de primeiro acesso.
+ * Acessível apenas para usuários com o papel de professor.
  */
 export default function TeacherStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -37,6 +42,11 @@ export default function TeacherStudentsPage() {
   );
   const [scenarioProgress, setScenarioProgress] = useState<ProgressData[]>([]);
 
+  const [accessCodes, setAccessCodes] = useState<CreatedStudentCode[] | null>(
+    null,
+  );
+  const [regeneratingId, setRegeneratingId] = useState<number | null>(null);
+
   const showNotification = (
     message: string,
     type: 'success' | 'error' | 'warning',
@@ -44,65 +54,50 @@ export default function TeacherStudentsPage() {
     setNotification({ message, type });
   };
 
-  const fetchStudents = useCallback(
-    async (selectedClass: string, availableClasses: Class[]) => {
+  // Turmas e cenários: carregados uma única vez.
+  useEffect(() => {
+    const loadStaticData = async () => {
+      try {
+        const [classesData, scenariosData] = await Promise.all([
+          teacherService.getMyClasses(),
+          teacherService.getAllScenarios(),
+        ]);
+        setClasses(classesData);
+        setScenarios(scenariosData);
+      } catch (error) {
+        showNotification(
+          getErrorMessage(error, 'Erro ao carregar turmas e cenários.'),
+          'error',
+        );
+      }
+    };
+    loadStaticData();
+  }, []);
+
+  // Alunos: uma busca na montagem e a cada mudança do filtro de turma.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
       setLoading(true);
       try {
-        if (selectedClass === 'all') {
-          const allStudentsMap = new Map<number, Student>();
-          for (const c of availableClasses) {
-            const classStudents = await teacherService.getStudentsInClass(c.id);
-            classStudents.forEach((s: Student) => allStudentsMap.set(s.id, s));
-          }
-          setStudents(Array.from(allStudentsMap.values()));
-        } else {
-          const filtered = await teacherService.getStudentsInClass(
-            parseInt(selectedClass),
+        const data = await fetchStudents(filterClass);
+        if (!cancelled) setStudents(data);
+      } catch (error) {
+        if (!cancelled) {
+          showNotification(
+            getErrorMessage(error, 'Erro ao buscar alunos.'),
+            'error',
           );
-          setStudents(filtered);
         }
-      } catch (error: any) {
-        showNotification(`Erro ao buscar alunos. ${error.message}`, 'error');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    },
-    [],
-  );
-
-  const loadInitialData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [classesData, scenariosData] = await Promise.all([
-        teacherService.getMyClasses(),
-        teacherService.getAllScenarios(),
-      ]);
-      setClasses(classesData);
-      setScenarios(scenariosData);
-
-      if (classesData.length > 0) {
-        await fetchStudents('all', classesData);
-      } else {
-        setLoading(false);
-      }
-    } catch (error: any) {
-      showNotification(
-        `Erro ao carregar dados iniciais. ${error.message}`,
-        'error',
-      );
-      setLoading(false);
-    }
-  }, [fetchStudents]);
-
-  useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
-
-  useEffect(() => {
-    if (classes.length > 0) {
-      fetchStudents(filterClass, classes);
-    }
-  }, [filterClass, classes, fetchStudents]);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [filterClass]);
 
   const displayedStudents = [...students].sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
@@ -113,26 +108,61 @@ export default function TeacherStudentsPage() {
     setMetricsStudent(student);
     setLoadingMetrics(true);
     try {
-      const global = await teacherService.getStudentProgress(student.id);
-      setGlobalProgress(global);
-
-      const perScenario = await Promise.all(
-        scenarios.map(async (scen) => {
-          const prog = await teacherService.getStudentProgress(student.id, {
+      const [global, ...perScenario] = await Promise.all([
+        teacherService.getStudentProgress(student.id),
+        ...scenarios.map((scen) =>
+          teacherService.getStudentProgress(student.id, {
             scenario_id: scen.id,
-          });
-          return { ...prog, scenario_name: scen.name };
-        }),
+          }),
+        ),
+      ]);
+      setGlobalProgress(global);
+      setScenarioProgress(
+        perScenario.map((prog, idx) => ({
+          ...prog,
+          scenario_name: scenarios[idx].name,
+        })),
       );
-      setScenarioProgress(perScenario);
-    } catch (error: any) {
+    } catch (error) {
       showNotification(
-        `Erro ao carregar desempenho do aluno. ${error.message}`,
+        getErrorMessage(error, 'Erro ao carregar desempenho do aluno.'),
         'error',
       );
       setMetricsStudent(null);
     } finally {
       setLoadingMetrics(false);
+    }
+  };
+
+  const handleRegenerateCode = async (student: Student) => {
+    if (
+      !window.confirm(
+        `Gerar um novo código de acesso para ${student.name}? A senha atual do aluno será removida e ele precisará refazer o primeiro acesso.`,
+      )
+    )
+      return;
+    setRegeneratingId(student.id);
+    try {
+      const result = await teacherService.regenerateAccessCode(student.id);
+      setAccessCodes([
+        {
+          registration_number: result.student.registration_number,
+          name: result.student.name,
+          access_code: result.access_code,
+        },
+      ]);
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === student.id ? { ...s, first_access_pending: true } : s,
+        ),
+      );
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao gerar novo código de acesso.'),
+        'error',
+      );
+    } finally {
+      setRegeneratingId(null);
     }
   };
 
@@ -223,22 +253,41 @@ export default function TeacherStudentsPage() {
                     onClick={() => openMetrics(student)}
                   >
                     <div className="flex-1">
-                      <div className="font-semibold text-gray-800">
+                      <div className="font-semibold text-gray-800 flex items-center gap-2">
                         {student.name}
+                        {student.first_access_pending && (
+                          <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            Primeiro acesso pendente
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-gray-500">
                         Matrícula: {student.registration_number}
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openMetrics(student);
-                      }}
-                      className="w-full sm:w-auto px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-medium rounded border border-indigo-200 hover:bg-indigo-100 transition"
-                    >
-                      Ver Desempenho
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRegenerateCode(student);
+                        }}
+                        disabled={regeneratingId === student.id}
+                        className="w-full sm:w-auto px-4 py-2 bg-amber-50 text-amber-800 text-sm font-medium rounded border border-amber-200 hover:bg-amber-100 transition cursor-pointer disabled:opacity-50"
+                      >
+                        {regeneratingId === student.id
+                          ? 'Gerando...'
+                          : 'Gerar novo código de acesso'}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openMetrics(student);
+                        }}
+                        className="w-full sm:w-auto px-4 py-2 bg-indigo-50 text-indigo-700 text-sm font-medium rounded border border-indigo-200 hover:bg-indigo-100 transition cursor-pointer"
+                      >
+                        Ver Desempenho
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -249,102 +298,20 @@ export default function TeacherStudentsPage() {
       </div>
 
       {metricsStudent && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Desempenho do Aluno
-                </h2>
-                <p className="text-gray-500 text-sm">
-                  {metricsStudent.name} ({metricsStudent.registration_number})
-                </p>
-              </div>
-              <button
-                onClick={() => setMetricsStudent(null)}
-                className="text-gray-500 hover:text-black text-2xl"
-              >
-                &times;
-              </button>
-            </div>
+        <StudentProgressModal
+          student={metricsStudent}
+          loading={loadingMetrics}
+          globalProgress={globalProgress}
+          scenarioProgress={scenarioProgress}
+          onClose={() => setMetricsStudent(null)}
+        />
+      )}
 
-            {loadingMetrics ? (
-              <div className="flex justify-center p-8">
-                <LoadingSpinner />
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-bold text-blue-900">
-                      Progresso Geral
-                    </h3>
-                    <p className="text-sm text-blue-700">
-                      Questões resolvidas em todo o sistema.
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-black text-blue-600">
-                      {globalProgress?.total_solved_questions || 0}{' '}
-                      <span className="text-lg text-blue-400">
-                        / {globalProgress?.total_available_questions || 0}
-                      </span>
-                    </div>
-                    <div className="text-sm font-semibold text-blue-500">
-                      {globalProgress?.completion_percentage || 0}% Concluído
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800 mb-3">
-                    Progresso por Banco de Dados (Cenário)
-                  </h3>
-                  {scenarioProgress.length === 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      Nenhum banco de dados disponível.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {scenarioProgress.map((sp, idx) => (
-                        <div
-                          key={idx}
-                          className="border p-4 rounded-lg shadow-sm"
-                        >
-                          <div
-                            className="font-semibold text-gray-800 mb-2 truncate"
-                            title={sp.scenario_name}
-                          >
-                            {sp.scenario_name}
-                          </div>
-                          <div className="flex justify-between items-end">
-                            <span className="text-2xl font-bold text-gray-700">
-                              {sp.total_solved_questions}{' '}
-                              <span className="text-sm font-normal text-gray-400">
-                                / {sp.total_available_questions}
-                              </span>
-                            </span>
-                            <span
-                              className={`text-sm font-bold ${sp.completion_percentage === 100 ? 'text-green-500' : 'text-gray-500'}`}
-                            >
-                              {sp.completion_percentage}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                            <div
-                              className="bg-blue-500 h-2 rounded-full"
-                              style={{ width: `${sp.completion_percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {accessCodes && (
+        <AccessCodesModal
+          codes={accessCodes}
+          onClose={() => setAccessCodes(null)}
+        />
       )}
     </ProtectedRoute>
   );

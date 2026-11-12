@@ -3,8 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-
-type Role = 'student' | 'teacher' | 'admin';
+import { Role } from '@/types/models';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -38,7 +37,7 @@ export default function ProtectedRoute({
   }
 
   if (allowedRoles && allowedRoles.length > 0) {
-    if (!allowedRoles.includes(user.role as Role)) {
+    if (!allowedRoles.includes(user.role)) {
       return (
         <div className="flex flex-col min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100">
           <h1 className="text-6xl font-bold text-red-500 mb-4">403</h1>

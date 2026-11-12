@@ -1,24 +1,27 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { AdminService } from '@/lib/services/admin';
+import { getErrorMessage } from '@/lib/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
-import { Student, Class, Scenario } from '@/types/models';
+import AccessCodesModal from '@/components/AccessCodesModal';
+import StudentProgressModal from '@/components/StudentProgressModal';
+import { Student, Class, Scenario, CreatedStudentCode } from '@/types/models';
 import { Notification } from '@/types/ui';
 import { ProgressData } from '@/types/metrics';
 
+/** Busca os alunos conforme o filtro de turma (todas ou uma turma específica) */
+const fetchStudents = (classFilter: string) =>
+  classFilter === 'all'
+    ? AdminService.getAllStudents()
+    : AdminService.getStudentsInClass(parseInt(classFilter));
+
 /**
  * Página de gerenciamento de alunos para administradores, permitindo criar, editar, excluir alunos,
- * filtrar por turma e visualizar métricas de desempenho.
- * Funcionalidades principais:
- * - Listagem de alunos com filtros por turma e ordenação.
- * - Modal para criação e edição de alunos.
- * - Visualização de métricas de desempenho geral e por cenário.
- * - Notificações para feedback de ações realizadas.
+ * gerar códigos de primeiro acesso, filtrar por turma e visualizar métricas de desempenho.
  */
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -42,6 +45,10 @@ export default function AdminStudentsPage() {
   );
   const [scenarioProgress, setScenarioProgress] = useState<ProgressData[]>([]);
 
+  const [accessCodes, setAccessCodes] = useState<CreatedStudentCode[] | null>(
+    null,
+  );
+
   const [formData, setFormData] = useState({
     name: '',
     registration_number: '',
@@ -55,50 +62,54 @@ export default function AdminStudentsPage() {
     setNotification({ message, type });
   };
 
-  const loadInitialData = async () => {
-    setLoading(true);
-    try {
-      const [studentsData, classesData, scenariosData] = await Promise.all([
-        AdminService.getAllStudents(),
-        AdminService.getAllClasses(),
-        AdminService.getAllScenarios(),
-      ]);
-      setStudents(studentsData);
-      setClasses(classesData);
-      setScenarios(scenariosData);
-    } catch (error: any) {
-      showNotification(`Erro ao carregar dados iniciais: ${error}.`, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Carrega turmas e cenários uma única vez.
   useEffect(() => {
-    loadInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const fetchFilteredStudents = async () => {
-      setLoading(true);
+    const loadStaticData = async () => {
       try {
-        if (filterClass === 'all') {
-          const all = await AdminService.getAllStudents();
-          setStudents(all);
-        } else {
-          const filtered = await AdminService.getStudentsInClass(
-            parseInt(filterClass),
-          );
-          setStudents(filtered);
-        }
+        const [classesData, scenariosData] = await Promise.all([
+          AdminService.getAllClasses(),
+          AdminService.getAllScenarios(),
+        ]);
+        setClasses(classesData);
+        setScenarios(scenariosData);
       } catch (error) {
-        showNotification(`Erro ao filtrar alunos. ${error}`, 'error');
-      } finally {
-        setLoading(false);
+        showNotification(
+          getErrorMessage(error, 'Erro ao carregar turmas e cenários.'),
+          'error',
+        );
       }
     };
-    fetchFilteredStudents();
+    loadStaticData();
+  }, []);
+
+  // Carrega os alunos na montagem e sempre que o filtro de turma muda (uma única busca por vez).
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchStudents(filterClass);
+        if (!cancelled) setStudents(data);
+      } catch (error) {
+        if (!cancelled) {
+          showNotification(
+            getErrorMessage(error, 'Erro ao carregar alunos.'),
+            'error',
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [filterClass]);
+
+  const reloadStudents = async () => {
+    setStudents(await fetchStudents(filterClass));
+  };
 
   const displayedStudents = [...students].sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
@@ -111,17 +122,23 @@ export default function AdminStudentsPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await AdminService.createStudent({
+      const result = await AdminService.createStudent({
         name: formData.name,
         registration_number: formData.registration_number,
       });
       showNotification('Aluno criado com sucesso!', 'success');
       setIsCreateModalOpen(false);
-      setFilterClass('all');
-      await loadInitialData();
-    } catch (error: any) {
-      const msg = error.response?.data?.error || 'Erro ao criar aluno.';
-      showNotification(msg, 'error');
+      setAccessCodes([
+        {
+          registration_number: result.student.registration_number,
+          name: result.student.name,
+          access_code: result.access_code,
+        },
+      ]);
+      if (filterClass === 'all') await reloadStudents();
+      else setFilterClass('all');
+    } catch (error) {
+      showNotification(getErrorMessage(error, 'Erro ao criar aluno.'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -132,7 +149,11 @@ export default function AdminStudentsPage() {
     if (!selectedStudent) return;
     setIsSubmitting(true);
     try {
-      const payload: any = {
+      const payload: {
+        name: string;
+        registration_number: string;
+        password?: string;
+      } = {
         name: formData.name,
         registration_number: formData.registration_number,
       };
@@ -141,17 +162,21 @@ export default function AdminStudentsPage() {
       await AdminService.editStudent(selectedStudent.id, payload);
       showNotification('Aluno atualizado com sucesso!', 'success');
       setIsEditMode(false);
-
-      if (filterClass === 'all') await loadInitialData();
-      else
-        setStudents(
-          await AdminService.getStudentsInClass(parseInt(filterClass)),
-        );
-
-      setSelectedStudent({ ...selectedStudent, ...payload });
-    } catch (error: any) {
-      const msg = error.response?.data?.error || 'Erro ao editar aluno.';
-      showNotification(msg, 'error');
+      await reloadStudents();
+      setSelectedStudent({
+        ...selectedStudent,
+        name: payload.name,
+        registration_number: payload.registration_number,
+        first_access_pending: payload.password
+          ? false
+          : selectedStudent.first_access_pending,
+      });
+      setFormData({ ...formData, password: '' });
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao editar aluno.'),
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -171,14 +196,42 @@ export default function AdminStudentsPage() {
       await AdminService.deleteStudent(selectedStudent.id);
       showNotification('Aluno excluído com sucesso!', 'success');
       setSelectedStudent(null);
-      if (filterClass === 'all') await loadInitialData();
-      else
-        setStudents(
-          await AdminService.getStudentsInClass(parseInt(filterClass)),
-        );
-    } catch (error: any) {
+      await reloadStudents();
+    } catch (error) {
       showNotification(
-        error.response?.data?.error || 'Erro ao excluir.',
+        getErrorMessage(error, 'Erro ao excluir aluno.'),
+        'error',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRegenerateCode = async () => {
+    if (!selectedStudent) return;
+    if (
+      !window.confirm(
+        'Gerar um novo código de acesso remove a senha atual do aluno. Ele precisará refazer o primeiro acesso. Continuar?',
+      )
+    )
+      return;
+    setIsSubmitting(true);
+    try {
+      const result = await AdminService.regenerateAccessCode(
+        selectedStudent.id,
+      );
+      setAccessCodes([
+        {
+          registration_number: result.student.registration_number,
+          name: result.student.name,
+          access_code: result.access_code,
+        },
+      ]);
+      setSelectedStudent({ ...selectedStudent, first_access_pending: true });
+      await reloadStudents();
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao gerar novo código de acesso.'),
         'error',
       );
     } finally {
@@ -192,21 +245,24 @@ export default function AdminStudentsPage() {
     setMetricsStudent(student);
     setLoadingMetrics(true);
     try {
-      const global = await AdminService.getStudentProgress(student.id);
-      setGlobalProgress(global);
-
-      const perScenario = await Promise.all(
-        scenarios.map(async (scen) => {
-          const prog = await AdminService.getStudentProgress(student.id, {
+      const [global, ...perScenario] = await Promise.all([
+        AdminService.getStudentProgress(student.id),
+        ...scenarios.map((scen) =>
+          AdminService.getStudentProgress(student.id, {
             scenario_id: scen.id,
-          });
-          return { ...prog, scenario_name: scen.name };
-        }),
+          }),
+        ),
+      ]);
+      setGlobalProgress(global);
+      setScenarioProgress(
+        perScenario.map((prog, idx) => ({
+          ...prog,
+          scenario_name: scenarios[idx].name,
+        })),
       );
-      setScenarioProgress(perScenario);
-    } catch (error: any) {
+    } catch (error) {
       showNotification(
-        `Erro ao carregar desempenho do aluno. ${error}`,
+        getErrorMessage(error, 'Erro ao carregar desempenho do aluno.'),
         'error',
       );
       setMetricsStudent(null);
@@ -240,7 +296,7 @@ export default function AdminStudentsPage() {
                 });
                 setIsCreateModalOpen(true);
               }}
-              className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition"
+              className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition cursor-pointer"
             >
               + Novo Aluno
             </button>
@@ -311,8 +367,13 @@ export default function AdminStudentsPage() {
                         });
                       }}
                     >
-                      <div className="font-semibold text-gray-800">
+                      <div className="font-semibold text-gray-800 flex items-center gap-2">
                         {student.name}
+                        {student.first_access_pending && (
+                          <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            Primeiro acesso pendente
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-gray-500">
                         Matrícula: {student.registration_number}
@@ -334,9 +395,13 @@ export default function AdminStudentsPage() {
       </div>
 
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <h2 className="text-2xl font-bold mb-4">Novo Aluno</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Após salvar, será exibido o código de primeiro acesso que o aluno
+              usará para criar a própria senha.
+            </p>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -391,7 +456,7 @@ export default function AdminStudentsPage() {
       )}
 
       {selectedStudent && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">
@@ -399,11 +464,17 @@ export default function AdminStudentsPage() {
               </h2>
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="text-gray-500 hover:text-black text-xl"
+                aria-label="Fechar"
+                className="text-gray-500 hover:text-black text-xl cursor-pointer"
               >
                 &times;
               </button>
             </div>
+            {selectedStudent.first_access_pending && (
+              <p className="mb-4 text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 px-3 py-2 rounded">
+                Primeiro acesso pendente: o aluno ainda não criou a senha.
+              </p>
+            )}
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -446,6 +517,7 @@ export default function AdminStudentsPage() {
                   <input
                     type="password"
                     placeholder="Deixe em branco para não alterar"
+                    minLength={6}
                     className="mt-1 block w-full border rounded p-2"
                     value={formData.password}
                     onChange={(e) =>
@@ -460,15 +532,23 @@ export default function AdminStudentsPage() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => setIsEditMode(false)}
-                      className="flex-1 px-4 py-2 border rounded text-gray-600 hover:bg-gray-100"
+                      onClick={() => {
+                        setIsEditMode(false);
+                        setFormData({
+                          name: selectedStudent.name,
+                          registration_number:
+                            selectedStudent.registration_number,
+                          password: '',
+                        });
+                      }}
+                      className="flex-1 px-4 py-2 border rounded text-gray-600 hover:bg-gray-100 cursor-pointer"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded flex justify-center items-center disabled:opacity-70"
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded flex justify-center items-center disabled:opacity-70 cursor-pointer"
                     >
                       {isSubmitting && <LoadingSpinner />} Salvar
                     </button>
@@ -477,7 +557,7 @@ export default function AdminStudentsPage() {
                   <button
                     type="button"
                     onClick={() => setIsEditMode(true)}
-                    className="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                    className="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 cursor-pointer"
                   >
                     Editar Dados
                   </button>
@@ -485,8 +565,16 @@ export default function AdminStudentsPage() {
                 <button
                   type="button"
                   disabled={isSubmitting}
+                  onClick={handleRegenerateCode}
+                  className="w-full px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded hover:bg-indigo-100 cursor-pointer disabled:opacity-50"
+                >
+                  Gerar novo código de acesso
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
                   onClick={handleDeleteStudent}
-                  className="w-full px-4 py-2 bg-red-100 text-red-700 border border-red-200 rounded hover:bg-red-200 mt-2"
+                  className="w-full px-4 py-2 bg-red-100 text-red-700 border border-red-200 rounded hover:bg-red-200 mt-2 cursor-pointer disabled:opacity-50"
                 >
                   Excluir Aluno
                 </button>
@@ -497,102 +585,20 @@ export default function AdminStudentsPage() {
       )}
 
       {metricsStudent && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Desempenho do Aluno
-                </h2>
-                <p className="text-gray-500 text-sm">
-                  {metricsStudent.name} ({metricsStudent.registration_number})
-                </p>
-              </div>
-              <button
-                onClick={() => setMetricsStudent(null)}
-                className="text-gray-500 hover:text-black text-2xl"
-              >
-                &times;
-              </button>
-            </div>
+        <StudentProgressModal
+          student={metricsStudent}
+          loading={loadingMetrics}
+          globalProgress={globalProgress}
+          scenarioProgress={scenarioProgress}
+          onClose={() => setMetricsStudent(null)}
+        />
+      )}
 
-            {loadingMetrics ? (
-              <div className="flex justify-center p-8">
-                <LoadingSpinner />
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-bold text-blue-900">
-                      Progresso Geral
-                    </h3>
-                    <p className="text-sm text-blue-700">
-                      Questões resolvidas em todo o sistema.
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-black text-blue-600">
-                      {globalProgress?.total_solved_questions}{' '}
-                      <span className="text-lg text-blue-400">
-                        / {globalProgress?.total_available_questions}
-                      </span>
-                    </div>
-                    <div className="text-sm font-semibold text-blue-500">
-                      {globalProgress?.completion_percentage}% Concluído
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800 mb-3">
-                    Progresso por Banco de Dados (Cenário)
-                  </h3>
-                  {scenarioProgress.length === 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      Nenhum banco de dados disponível.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {scenarioProgress.map((sp, idx) => (
-                        <div
-                          key={idx}
-                          className="border p-4 rounded-lg shadow-sm"
-                        >
-                          <div
-                            className="font-semibold text-gray-800 mb-2 truncate"
-                            title={sp.scenario_name}
-                          >
-                            {sp.scenario_name}
-                          </div>
-                          <div className="flex justify-between items-end">
-                            <span className="text-2xl font-bold text-gray-700">
-                              {sp.total_solved_questions}{' '}
-                              <span className="text-sm font-normal text-gray-400">
-                                / {sp.total_available_questions}
-                              </span>
-                            </span>
-                            <span
-                              className={`text-sm font-bold ${sp.completion_percentage === 100 ? 'text-green-500' : 'text-gray-500'}`}
-                            >
-                              {sp.completion_percentage}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                            <div
-                              className="bg-blue-500 h-2 rounded-full"
-                              style={{ width: `${sp.completion_percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {accessCodes && (
+        <AccessCodesModal
+          codes={accessCodes}
+          onClose={() => setAccessCodes(null)}
+        />
       )}
     </ProtectedRoute>
   );

@@ -8,85 +8,65 @@
 
 ## 📌 Sobre o Projeto
 
-O **SQL Trail** é uma plataforma educacional web voltada ao ensino prático de SQL por meio da resolução progressiva de desafios com **feedback imediato**.
+O **SQL Trail** é uma plataforma educacional web voltada ao ensino prático de SQL por meio da resolução de desafios com **feedback imediato**.
 
-A aplicação simula cenários reais de bancos de dados relacionais, permitindo que usuários executem consultas SQL diretamente no navegador e recebam validação automática, promovendo aprendizado ativo e orientado à prática.
+A aplicação simula cenários reais de bancos de dados relacionais, permitindo que os alunos executem consultas SQL diretamente no navegador e recebam validação automática, promovendo aprendizado ativo e orientado à prática.
 
-O sistema conta com **autenticação e controle de acesso**, possibilitando diferentes perfis de uso, como alunos, professores e administradores.
+Diferente das abordagens lineares, os desafios seguem uma lógica de **Teste Adaptativo Computadorizado (CAT)**: as questões de cada cenário formam uma trilha ordenada por dificuldade, percorrida como uma árvore de busca binária:
+
+- o aluno começa pela questão de dificuldade mediana;
+- **acerto** → segue para uma questão de nível superior;
+- **erro** → recebe o feedback (erro de sintaxe ou lógico) e pode tentar novamente;
+- **pulo** (liberado após 3 minutos na questão) → segue para uma questão de nível inferior, reforçando os fundamentos.
+
+O sistema conta com **autenticação e controle de acesso** para três perfis: alunos, professores e administradores.
 
 ---
 
 ## 🏗️ Arquitetura da Aplicação
 
-A aplicação segue uma arquitetura moderna baseada em separação de responsabilidades:
+Arquitetura cliente-servidor baseada em uma API RESTful.
 
 ### 🎨 Frontend
 
-Desenvolvido com:
-
-- React
-- TypeScript
-- Next.js (App Router)
-- Tailwind CSS
+- React, TypeScript, Next.js (App Router) e Tailwind CSS
+- Axios para a comunicação com a API, com token JWT gerenciado via Context API
 
 Responsável por:
 
-- Interface interativa para execução de queries SQL
+- Interface interativa para execução de queries SQL (editor CodeMirror)
 - Dashboards específicos por perfil (Admin, Professor e Aluno)
-- Controle de autenticação no cliente
-- Proteção de rotas (Protected Routes)
-- Visualização de progresso, resultados e métricas
-
----
+- Proteção de rotas e logout automático (inatividade ou sessão expirada)
+- Visualização da trilha, do progresso e das métricas
 
 ### ⚙️ Backend
 
-Desenvolvido com:
+- Python e Flask (Application Factory)
+- Camadas separadas: `routes` (HTTP) → `services` (regras de negócio)
+- `utils`: decorators de autorização e serializers
 
-- Python
-- Flask (Application Factory Pattern)
-- API RESTful
+Principais serviços:
 
-Responsável por:
+- **SubmissionService**: sessões adaptativas (CAT) e registro das tentativas
+- **SQLGrader**: validação de segurança das consultas e correção em três níveis (estrutural exato, ordem flexível e busca flexível avançada, que aceita colunas extras)
+- **SupabaseService**: execução das consultas nos cenários via RPC
+- **QuestionService / ScenarioDatabaseService**: cenários e trilha de questões
+- **ClassroomService / ReportService**: turmas, matrículas e métricas de desempenho
+- **AuthService**: usuários, primeiro acesso e emissão dos tokens JWT
 
-- Autenticação e autorização de usuários
-- Processamento e validação de queries SQL
-- Gerenciamento de desafios, turmas e usuários
-- Geração de relatórios e métricas
-- Organização modular por domínio (`auth`, `classrooms`, `reports`, etc.)
+### 🗄️ Bancos de Dados
 
-A API segue boas práticas REST e organização em camadas:
-
-- `routes` → definição dos endpoints
-- `services` → regras de negócio
-- `decorators` → controle de acesso e autenticação
-
----
-
-### 🗄️ Banco de Dados
-
-- MySQL (TiDB Cloud)
-
-Responsável por:
-
-- Armazenamento de usuários e autenticação
-- Persistência de desafios e bancos simulados
-- Controle de progresso dos alunos
-- Dados de turmas e relatórios
+- **Banco da aplicação — SQLite** (SQLAlchemy / Flask-SQLAlchemy): usuários, turmas, questões, sessões adaptativas e submissões.
+- **Ambiente de execução (sandbox) — Supabase/PostgreSQL**: um banco isolado por cenário, identificado pelo slug, acessado por uma função RPC somente leitura.
 
 ---
 
 ## 🔐 Sistema de Autenticação
 
-A aplicação possui autenticação completa com:
-
-- Login de usuários
-- Controle de sessão/token
-- Proteção de rotas no frontend e backend
-- Diferentes níveis de acesso:
-  - Aluno
-  - Professor
-  - Administrador
+- Login com token JWT e controle de acesso por perfil (Aluno, Professor e Administrador), no frontend e no backend
+- Professores só acessam as próprias turmas e os alunos matriculados nelas
+- Alunos fazem o primeiro acesso com a matrícula e um **código de acesso** gerado pelo professor ao matriculá-los
+- Os gabaritos das questões nunca são enviados aos alunos
 
 ---
 
@@ -96,28 +76,27 @@ A aplicação possui autenticação completa com:
 .
 ├── backend/
 │   ├── app/
-│   │   ├── auth/          # Autenticação e autorização
-│   │   ├── classrooms/    # Gerenciamento de turmas
-│   │   ├── database/      # Modelos e conexão
-│   │   ├── main/          # Lógica principal (queries/desafios)
-│   │   ├── reports/       # Relatórios e métricas
-│   │   └── config/        # Configurações
-│   └── app.py             # Inicialização (Application Factory)
+│   │   ├── config/        # Configurações do sistema
+│   │   ├── database/      # Modelos, conexão (SQLAlchemy), migração leve e seed
+│   │   ├── routes/        # Controladores de rotas RESTful
+│   │   ├── services/      # Camada de regras de negócio
+│   │   └── utils/         # Decorators e Serializers
+│   ├── tests/             # Testes automatizados (pytest)
+│   └── wsgi.py            # Ponto de entrada WSGI
 │
 ├── frontend/
 │   ├── app/               # Rotas (App Router)
 │   │   ├── (auth)/        # Login
-│   │   ├── (student)/     # Área do aluno
-│   │   ├── (teacher)/     # Área do professor
+│   │   ├── (student)/     # Área de resolução de desafios
+│   │   ├── (teacher)/     # Gestão de turmas e alunos
 │   │   ├── (admin)/       # Área administrativa
-│   │   └── (admin-teacher)/
-│   │
-│   ├── components/        # Componentes reutilizáveis
+│   │   └── (admin-teacher)/  # Bancos, questões e validador de gabaritos
+│   ├── components/        # Componentes reutilizáveis de UI
 │   ├── contexts/          # Context API (Auth)
-│   ├── lib/               # Integração com API
+│   ├── lib/               # Integração com a API do backend
 │   └── types/             # Tipagens TypeScript
 │
-└── README.md
+└── readme.md
 ```
 
 ---
@@ -128,17 +107,17 @@ A aplicação possui autenticação completa com:
 
 ---
 
-## 📋 TO DOS
+## 📋 TO DOs
 
-- Alterar o banco de dados da aplicação. Ao invés de uma tabela para cada papel, utilizar uma tabela user e outra tabela role.
+- Corrigir consultas com Árvore de Sintaxe ou algo parecido
+- Unificar as tabelas de usuários: uma tabela `user` e outra `role`, em vez de uma tabela por papel
 - Adicionar mais cenários de questões
-- Analisar se vale a pens mudar do posgree para mysql
-- Adicionar TRI as questões
-- Ordem das questões deve mudar de acordo como usuário
-- Recolher o coeficiente de rendimento e notas em disciplinas de BD do aluno
-- Adicionar NoSQL com MongoDB
-- Adicionar camadas de proteção e tratamento derros, tanto no fornt quanto no back
-- Testes da aplicação com alunos para recolher dados para o TRI
+- Avaliar a troca do PostgreSQL (Supabase) por MySQL nos cenários
+- Aplicar a Teoria de Resposta ao Item (TRI) na calibração da dificuldade das questões
+- Coletar o coeficiente de rendimento e as notas dos alunos em disciplinas de Banco de Dados
+- Adicionar cenários NoSQL com MongoDB
+- Analisar as consultas com árvores de sintaxe abstrata
+- Testar a aplicação com alunos para coletar dados para a TRI
 
 ---
 

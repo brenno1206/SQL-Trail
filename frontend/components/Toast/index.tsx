@@ -1,12 +1,24 @@
-import { useEffect } from 'react';
+'use client';
+import { useEffect, useRef } from 'react';
 import { Notification } from '@/types/ui';
 
 interface ToastProps extends Notification {
   onClose?: () => void;
 }
 
-/** Componente de Toast/Notificação */
+/** Componente de Toast/Notificação (fecha sozinho após 8 segundos) */
 export default function Toast({ message, type, onClose }: ToastProps) {
+  // Guarda o callback mais recente sem reiniciar o temporizador a cada renderização do pai.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => onCloseRef.current?.(), 8000);
+    return () => clearTimeout(timer);
+  }, [message, type]);
+
   const bgColor =
     type === 'success'
       ? 'bg-green-500'
@@ -14,22 +26,14 @@ export default function Toast({ message, type, onClose }: ToastProps) {
         ? 'bg-red-500'
         : 'bg-yellow-500 text-gray-900';
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (onClose) onClose();
-    }, 8000);
-
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
   return (
     <div
-      className={`fixed top-4 right-4 z-60 px-4 py-3 rounded-md shadow-lg text-white font-medium transition-all duration-300 animate-fade-in-down flex items-center justify-between gap-4 ${bgColor}`}
+      role="status"
+      className={`fixed top-4 right-4 z-60 max-w-md px-4 py-3 rounded-md shadow-lg text-white font-medium transition-all duration-300 flex items-center justify-between gap-4 ${bgColor}`}
     >
       <span>{message}</span>
-
       <button
-        onClick={onClose}
+        onClick={() => onCloseRef.current?.()}
         className="shrink-0 hover:opacity-70 transition-opacity focus:outline-none cursor-pointer"
         aria-label="Fechar"
       >

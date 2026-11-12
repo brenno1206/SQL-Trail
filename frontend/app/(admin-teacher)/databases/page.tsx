@@ -1,5 +1,4 @@
 /* eslint-disable @next/next/no-img-element */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
@@ -10,7 +9,9 @@ import { teacherService } from '@/lib/services/teacher';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Question, Scenario } from '@/types/models';
+import { DIFFICULTY_LABELS, Question, Scenario } from '@/types/models';
+import { getErrorMessage } from '@/lib/api';
+import { getDiagramUrl } from '@/types/databases';
 import { Notification } from '@/types/ui';
 import { QuestionMetric } from '@/types/metrics';
 
@@ -50,7 +51,8 @@ export default function DatabasesPage() {
     id: 0,
     statement: '',
     expected_query: '',
-    question_order: 1,
+    question_order: '' as number | '',
+    difficulty: 1,
     is_special: false,
   });
 
@@ -71,9 +73,9 @@ export default function DatabasesPage() {
       ]);
       setScenarios(scenariosData);
       setQuestions(questionsData);
-    } catch (error: any) {
+    } catch (error) {
       showNotification(
-        `Erro ao carregar cenários e questões. ${error.message || error}`,
+        getErrorMessage(error, 'Erro ao carregar cenários e questões.'),
         'error',
       );
     } finally {
@@ -95,9 +97,9 @@ export default function DatabasesPage() {
         {},
       );
       setMetrics(metricsMap);
-    } catch (error: any) {
+    } catch (error) {
       showNotification(
-        `Erro ao carregar métricas de desempenho. ${error.message || error}`,
+        getErrorMessage(error, 'Erro ao carregar métricas de desempenho.'),
         'error',
       );
     } finally {
@@ -128,32 +130,31 @@ export default function DatabasesPage() {
       const diagramUrl = `/${scenarioFormData.slug}.png`;
 
       if (scenarioFormData.id) {
-        await apiService.editScenario(scenarioFormData.slug, {
+        const updated = await apiService.editScenario(scenarioFormData.slug, {
           name: scenarioFormData.name,
-          slug: scenarioFormData.slug,
-          diagram_url: diagramUrl,
         });
         showNotification('Database atualizado com sucesso!', 'success');
         if (selectedScenario && selectedScenario.id === scenarioFormData.id) {
-          setSelectedScenario({
-            ...selectedScenario,
-            name: scenarioFormData.name,
-            slug: scenarioFormData.slug,
-          });
+          setSelectedScenario(updated);
         }
       } else {
-        await apiService.createScenario({
+        const created = await apiService.createScenario({
           name: scenarioFormData.name,
           slug: scenarioFormData.slug,
           diagram_url: diagramUrl,
         });
-        showNotification('Database criado com sucesso!', 'success');
+        showNotification(
+          created.has_credentials
+            ? 'Database criado com sucesso!'
+            : `Database criado. Configure SUPABASE_URL_${created.slug.toUpperCase().replace(/-/g, '_')} e SUPABASE_KEY_${created.slug.toUpperCase().replace(/-/g, '_')} no .env do backend e crie o banco no Supabase.`,
+          created.has_credentials ? 'success' : 'warning',
+        );
       }
       setIsScenarioModalOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       showNotification(
-        error.response?.data?.error || 'Erro ao salvar database.',
+        getErrorMessage(error, 'Erro ao salvar database.'),
         'error',
       );
     } finally {
@@ -172,9 +173,9 @@ export default function DatabasesPage() {
       showNotification('Database excluído com sucesso.', 'success');
       setSelectedScenario(null);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       showNotification(
-        `Erro ao excluir database. ${error.message || error}`,
+        getErrorMessage(error, 'Erro ao excluir database.'),
         'error',
       );
     } finally {
@@ -191,8 +192,11 @@ export default function DatabasesPage() {
         scenario_database_id: selectedScenario.id,
         statement: questionFormData.statement || '',
         expected_query: questionFormData.expected_query || '',
-        question_order: questionFormData.question_order,
+        difficulty: questionFormData.difficulty,
         is_special: questionFormData.is_special,
+        ...(questionFormData.question_order !== ''
+          ? { question_order: questionFormData.question_order }
+          : {}),
       };
 
       if (questionFormData.id) {
@@ -204,9 +208,9 @@ export default function DatabasesPage() {
       }
       setIsQuestionModalOpen(false);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       showNotification(
-        error.response?.data?.error || 'Erro ao salvar questão.',
+        getErrorMessage(error, 'Erro ao salvar questão.'),
         'error',
       );
     } finally {
@@ -221,9 +225,9 @@ export default function DatabasesPage() {
       await apiService.deleteQuestion(id);
       showNotification('Questão excluída.', 'success');
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       showNotification(
-        `Erro ao excluir questão. ${error.message || error}`,
+        getErrorMessage(error, 'Erro ao excluir questão.'),
         'error',
       );
     } finally {
@@ -341,7 +345,7 @@ export default function DatabasesPage() {
                 </h3>
                 <div className="bg-gray-100 p-4 rounded border flex justify-center items-center">
                   <img
-                    src={`/${selectedScenario.slug}.png`}
+                    src={getDiagramUrl(selectedScenario)}
                     alt={`Diagrama de ${selectedScenario.name}`}
                     className="max-w-full max-h-[400px] object-contain rounded"
                     onError={(e) => {
@@ -350,9 +354,15 @@ export default function DatabasesPage() {
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-2 italic">
-                  * A imagem deve estar localizada em public/
-                  {selectedScenario.slug}.png
+                  * Imagem: frontend/public{getDiagramUrl(selectedScenario)}
                 </p>
+                {selectedScenario.has_credentials === false && (
+                  <p className="mt-2 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded p-2">
+                    As credenciais do Supabase deste cenário não estão
+                    configuradas no backend (SUPABASE_URL_/SUPABASE_KEY_). Os
+                    alunos não verão este banco até que sejam definidas.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -377,7 +387,8 @@ export default function DatabasesPage() {
                         id: 0,
                         statement: '',
                         expected_query: '',
-                        question_order: 1,
+                        question_order: '',
+                        difficulty: 1,
                         is_special: false,
                       });
                       setIsQuestionModalOpen(true);
@@ -409,14 +420,17 @@ export default function DatabasesPage() {
                             <div className="flex gap-2 items-center">
                               <span
                                 className={`text-xs px-2 py-0.5 rounded font-bold ${
-                                  q.question_order <= 10
+                                  q.difficulty <= 1
                                     ? 'bg-green-100 text-green-800'
-                                    : q.question_order <= 30
+                                    : q.difficulty === 2
                                       ? 'bg-yellow-100 text-yellow-800'
                                       : 'bg-red-100 text-red-800'
                                 }`}
                               >
-                                Questão {q.question_order}
+                                {q.is_special ? 'Desafio' : 'Questão'}{' '}
+                                {q.question_order} ·{' '}
+                                {DIFFICULTY_LABELS[q.difficulty] ||
+                                  q.difficulty}
                               </span>
                               {q.is_special && (
                                 <span className="text-xs px-2 py-0.5 rounded font-bold bg-purple-200 text-purple-800">
@@ -432,6 +446,7 @@ export default function DatabasesPage() {
                                     statement: q.statement || '',
                                     expected_query: q.expected_query || '',
                                     question_order: q.question_order,
+                                    difficulty: q.difficulty,
                                     is_special: q.is_special,
                                   });
                                   setIsQuestionModalOpen(true);
@@ -469,7 +484,7 @@ export default function DatabasesPage() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                               <div>
                                 <p className="text-[10px] text-gray-500">
-                                  Taxa de Acerto
+                                  Taxa de Acerto (alunos)
                                 </p>
                                 <p
                                   className={`text-sm font-bold ${qMetrics.accuracy_percentage > 60 ? 'text-green-600' : qMetrics.accuracy_percentage > 30 ? 'text-yellow-600' : 'text-red-600'}`}
@@ -479,11 +494,11 @@ export default function DatabasesPage() {
                               </div>
                               <div>
                                 <p className="text-[10px] text-gray-500">
-                                  Tentativas (Total / Corretas)
+                                  Tentativas (Total / Corretas / Pulos)
                                 </p>
                                 <p className="text-sm font-bold text-gray-700">
                                   {qMetrics.total_attempts} /{' '}
-                                  {qMetrics.correct_attempts}
+                                  {qMetrics.correct_attempts} / {qMetrics.skips}
                                 </p>
                               </div>
                               <div>
@@ -497,7 +512,7 @@ export default function DatabasesPage() {
                               </div>
                               <div>
                                 <p className="text-[10px] text-gray-500">
-                                  Tempo Médio Gasto
+                                  Tempo Médio por Tentativa
                                 </p>
                                 <p className="text-sm font-bold text-gray-700">
                                   {qMetrics.avg_time_spent_seconds}s
@@ -636,19 +651,39 @@ export default function DatabasesPage() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700">
-                    Número da Questão
+                    Dificuldade
+                  </label>
+                  <select
+                    required
+                    className="mt-1 block w-full border rounded p-2 bg-white"
+                    value={questionFormData.difficulty}
+                    onChange={(e) =>
+                      setQuestionFormData({
+                        ...questionFormData,
+                        difficulty: Number(e.target.value),
+                      })
+                    }
+                  >
+                    <option value={1}>Fácil</option>
+                    <option value={2}>Médio</option>
+                    <option value={3}>Difícil</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Posição (opcional)
                   </label>
                   <input
                     type="number"
                     min="1"
-                    max="100"
-                    required
                     className="mt-1 block w-full border rounded p-2"
                     value={questionFormData.question_order}
+                    placeholder="Fim do nível"
                     onChange={(e) =>
                       setQuestionFormData({
                         ...questionFormData,
-                        question_order: Number(e.target.value),
+                        question_order:
+                          e.target.value === '' ? '' : Number(e.target.value),
                       })
                     }
                   />
@@ -667,11 +702,16 @@ export default function DatabasesPage() {
                       }
                     />
                     <span className="text-sm font-medium text-purple-700">
-                      Questão Especial (Desafio)
+                      Desafio especial (fora da trilha)
                     </span>
                   </label>
                 </div>
               </div>
+              <p className="text-xs text-gray-500">
+                A trilha adaptativa é mantida em ordem crescente de dificuldade:
+                a posição é ajustada automaticamente dentro do nível escolhido.
+                Editar uma questão preserva o histórico de respostas dos alunos.
+              </p>
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   type="button"

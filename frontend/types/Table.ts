@@ -1,4 +1,4 @@
-export type TableCell = string | number | boolean | null;
+export type TableCell = string | number | boolean | null | object;
 
 /**
  * colunas e linhas da tabela resultante da consulta
@@ -9,8 +9,10 @@ export interface TableData {
 }
 
 /**
- * total de linhas da consulta, mesmo que a tabela resultante seja limitada por paginação
+ * Resultado da consulta com o total real de linhas
+ * (as linhas exibidas podem ser limitadas pelo servidor; nesse caso `truncated` é true)
  */
 export interface TableDataWithTotal extends TableData {
-  total_rows: number;
+  total: number;
+  truncated?: boolean;
 }

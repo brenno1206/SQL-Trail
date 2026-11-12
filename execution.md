@@ -1,141 +1,48 @@
 # Execução do Projeto
 
-## arquivo backend/.env
+## Arquivo `backend/.env`
 
 ```env
-# Configuração do Supabase
+# Credenciais dos cenários no Supabase (uma URL e uma KEY por slug de cenário).
+# O sufixo é o slug em maiúsculas, com "-" trocado por "_".
+# Use a chave "anon" (nunca a service_role) para que as consultas rodem com um papel sem escrita.
 SUPABASE_URL_RECURSOS_HUMANOS=xxx
 SUPABASE_KEY_RECURSOS_HUMANOS=xxx
 
 SUPABASE_URL_UNIVERSIDADE=xxx
 SUPABASE_KEY_UNIVERSIDADE=xxx
 
-# Configuração do Flask
-FLASK_SECRET_KEY=supersecretkey
-APP_SETTINGS=app.config.DevelopmentConfig
-JWT_SECRET_KEY=jwtsecretkey
+# Flask
+APP_SETTINGS=app.config.DevelopmentConfig   # em produção: app.config.ProductionConfig
+FLASK_SECRET_KEY=troque-por-um-valor-aleatorio-longo
+JWT_SECRET_KEY=troque-por-outro-valor-aleatorio-longo-com-32-ou-mais-caracteres
+JWT_EXPIRES_HOURS=4                         # validade do token de acesso
 
-# Configuração do TiDB
-TIDB_HOST=xxx
-TIDB_PORT=xxx
-TIDB_USER=xxx
-TIDB_PASSWORD=xxx
-TIDB_DB_NAME=xxx
-CA_PATH=xxx
+# Origens permitidas no CORS (separadas por vírgula). Obrigatório em produção.
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+
+# Opcionais
+SKIP_MIN_SECONDS=180        # tempo mínimo na questão antes de poder pulá-la (padrão: 3 minutos)
+MAX_RESULT_ROWS=10000       # resultado máximo aceito de uma consulta
+DISPLAY_RESULT_ROWS=500     # linhas exibidas na tela
+SEED_ADMIN_EMAIL=admin@sqltrail.com
+SEED_ADMIN_PASSWORD=        # se vazio, o seed gera uma senha aleatória e a exibe no terminal
 ```
 
-- É necessário substituir o .env com os dados necessários
+- Gere valores aleatórios para os segredos, por exemplo: `python -c "import secrets; print(secrets.token_hex(32))"`.
+- Em desenvolvimento, se `FLASK_SECRET_KEY`/`JWT_SECRET_KEY` estiverem ausentes, o backend gera valores temporários (os logins deixam de valer ao reiniciar). Em produção eles são obrigatórios.
 
-### TiBD Cloud
+## Arquivo `frontend/.env.local` (opcional)
 
-- crie o schema SQL no SUPABASE e utilie o código abaixo para criar as tabelas
-- Coloque as informações necessárias para a conexão do banco em `backend/.env` (TIBD_HOST, TIBD_PORT, TIBD_USER, TIBD_PASSWORD, TIBD_DB_NAME, CA_PATH)
-
-<details>
-<summary>Clique aqui para expandir o código SQL de criação das tabelas do sistema</summary>
-
-```sql
-USE SQL_TRAIL;
-
--- ADMINS TABLE
-CREATE TABLE IF NOT EXISTS
-  `admins` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
-    `email` VARCHAR(100) UNIQUE NOT NULL,
-    `password_hash` VARCHAR(255) NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-
--- TEACHERS TABLE
-CREATE TABLE IF NOT EXISTS
-  `teachers` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `registration_number` VARCHAR(50) UNIQUE NOT NULL,
-    `name` VARCHAR(100) NOT NULL,
-    `email` VARCHAR(100) UNIQUE NOT NULL,
-    `password_hash` VARCHAR(255) NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-
--- STUDENTS TABLE
-CREATE TABLE IF NOT EXISTS
-  `students` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `registration_number` VARCHAR(50) UNIQUE NOT NULL,
-    `name` VARCHAR(100) NOT NULL,
-    `password_hash` VARCHAR(255),
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-
--- CLASSES TABLE
-CREATE TABLE IF NOT EXISTS
-  `classes` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `teacher_id` INT NOT NULL,
-    `class_name` VARCHAR(100) NOT NULL,
-    `subject` VARCHAR(100) NOT NULL,
-    `year_semester` VARCHAR(20) NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`teacher_id`) REFERENCES `teachers`(`id`) ON DELETE CASCADE
-  );
-
--- ENROLLMENTS TABLE
-CREATE TABLE IF NOT EXISTS
-  `enrollments` (
-    `class_id` INT NOT NULL,
-    `student_id` INT NOT NULL,
-    PRIMARY KEY (`class_id`, `student_id`),
-    FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE
-  );
-
--- SCENARIO DATABASES TABLE
-CREATE TABLE IF NOT EXISTS
-  `scenario_databases` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `slug` VARCHAR(100) UNIQUE NOT NULL,
-    `name` VARCHAR(100) NOT NULL,
-    `diagram_url` VARCHAR(255) NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-
--- QUESTIONS TABLE
-CREATE TABLE IF NOT EXISTS
-  `questions` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `scenario_database_id` INT NOT NULL,
-    `statement` TEXT NOT NULL,
-    `expected_query` TEXT NOT NULL,
-    `question_number` INT NOT NULL,
-    `is_special` BOOLEAN DEFAULT FALSE,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`scenario_database_id`) REFERENCES `scenario_databases`(`id`) ON DELETE CASCADE
-  );
-
--- SUBMISSIONS TABLE
-CREATE TABLE IF NOT EXISTS
-  `submissions` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `student_id` INT NOT NULL,
-    `question_id` INT NOT NULL,
-    `time_spent_seconds` INT NOT NULL,
-    `submitted_query` TEXT NOT NULL,
-    `is_correct` BOOLEAN NOT NULL DEFAULT FALSE,
-    `execution_output` TEXT,
-    `submitted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`question_id`) REFERENCES `questions`(`id`) ON DELETE CASCADE
-  );
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:5000
 ```
-
-</details>
 
 ### Supabase
 
 - O supabase é utilizado para simular os cenários onde o aluno utilizará as queries
 - No momento há 2 bancos de dados: Recursos Humanos e Universidade
-- No Supabase e necessário inserir apenas a URL e a KEY de cada banco de dados no `backend/.env`
+- No Supabase é necessário criar um projeto por cenário e informar a URL e a KEY (anon) de cada um no `backend/.env`
 
 - <b>Recursos Humanos</b>
 <details>
@@ -919,98 +826,105 @@ WHERE student_id IN (16, 17, 18, 19, 20, 24, 29);
 </details>
 
 <br>
-- Para garantir um ambiente seguro, é necessário utilizar uma função <b>RPC</b>. Ela deve ser inserida em todos os bancos de dados dos cenários
-
-<br>
+- Para garantir um ambiente seguro, é necessário criar a função <b>RPC</b> abaixo em todos os bancos de dados dos cenários (SQL Editor do Supabase). Se você já tinha a versão anterior da função, execute o bloco inteiro: ele remove a antiga, pois o tipo de retorno mudou.
+- O que ela garante:
+  - `STABLE`: o PostgreSQL recusa qualquer comando de escrita executado dentro dela;
+  - retorno em texto (`json` preservado), para que colunas com nomes repetidos não se percam;
+  - a quebra de linha antes de `) t` impede que um comentário `--` no fim da consulta quebre a execução.
+- O tempo limite deve ser definido no papel (role) usado pela chave: um `SET statement_timeout` dentro da função não interrompe a consulta que já está em execução.
 
 <details>
-<summary>Clique aqui para expandir o código SQL da função RPC</summary>
+<summary>Clique aqui para expandir o código SQL da função RPC e das permissões</summary>
 
 ```sql
-CREATE OR REPLACE FUNCTION rpc_sql(p_query text)
-RETURNS json
+DROP FUNCTION IF EXISTS rpc_sql(text);
+
+CREATE FUNCTION rpc_sql(p_query text)
+RETURNS text
 LANGUAGE plpgsql
+STABLE
 AS $$
 DECLARE
-    result json;
+    result text;
 BEGIN
-    SET LOCAL statement_timeout = '5s';
-
-    EXECUTE 'SELECT json_agg(t) FROM (' || p_query || ') t'
+    EXECUTE 'SELECT json_agg(t)::text FROM (' || p_query || E'\n) t'
     INTO result;
-
-    IF result IS NULL THEN
-        RETURN '[]'::json;
-    END IF;
-
-    RETURN result;
-
+    RETURN COALESCE(result, '[]');
 EXCEPTION
     WHEN others THEN
-        RETURN json_build_object('error', SQLERRM);
+        RETURN json_build_object('error', SQLERRM)::text;
 END;
 $$;
+
+-- Somente o papel usado pelo backend (anon) pode chamar a função
+REVOKE ALL ON FUNCTION rpc_sql(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION rpc_sql(text) TO anon;
+
+-- Papel somente leitura nas tabelas do cenário
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+
+-- Tempo limite das consultas executadas pelo papel anon
+ALTER ROLE anon SET statement_timeout = '5s';
+NOTIFY pgrst, 'reload config';
 ```
 
 </details>
+
+- O backend também recusa, antes de enviar ao banco, consultas que não comecem com `SELECT`/`WITH`, que tenham mais de uma instrução ou que usem comandos/funções com efeito colateral (`pg_sleep`, `setval`, `set_config` etc.).
 
 ### Questões dos databases
 
 - As questões desenvolvidas estão disponíveis no
   [Notion](https://scalloped-shape-8f7.notion.site/SQL-Trail-3197a6a2836880b0afb2f697513eebdf?source=copy_link)
 
-### Backend
+### Ativando o Ambiente
 
-- Garanta que o python e o pip estão instalados
+- Garanta que o Python (3.11+) e o pip estão instalados
+- Crie o ambiente virtual e instale as dependências
 
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
-flask run
+pip install -e ".[test]"
 ```
+
+### Banco de dados local (SQLite)
+
+- As tabelas são criadas (e colunas novas adicionadas) automaticamente ao iniciar o backend. Também é possível fazer isso manualmente:
+
+```bash
+flask create-db   # cria/atualiza as tabelas
+flask seed-dev    # cenários, trilha de questões e admin padrão (se ainda não houver admin)
+```
+
+- `flask seed-dev` recria as questões dos cenários semeados e, por isso, apaga o progresso dos alunos nesses cenários (pede confirmação; use `--yes` para pular).
+- `flask reset-db` apaga tudo e recria o banco do zero. Recomendado uma vez para bancos criados por versões antigas, para que os IDs passem a usar `AUTOINCREMENT` (sem reaproveitamento de IDs de registros excluídos).
+
+### Backend
+
+```bash
+cd backend
+flask run          # http://127.0.0.1:5000
+pytest             # testes automatizados
+```
+
+- Em produção, use um servidor WSGI apontando para `wsgi:app` (ex.: `gunicorn wsgi:app`) com `APP_SETTINGS=app.config.ProductionConfig`.
 
 ### Frontend
 
-- Garanta que o nodejs está instalado
+- Em outro terminal
+- Garanta que o Node.js está instalado
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev        # http://localhost:3000
 ```
 
-### Script para a geração do primeiro Admin. (NUNCA USAR EM PRODUÇÃO)
+### Primeiro acesso dos alunos
 
-```python
-from app import create_app
-from app.auth.services import AuthService
-
-def create_first_admin():
-    app = create_app()
-
-    with app.app_context():
-        print("=== Configuração do Primeiro Administrador ===")
-
-        data = {
-            "name": 'admin',
-            "email": 'admin@mail.com',
-            "password": 'admin'
-        }
-
-        success, response = AuthService.create_admin(data)
-
-        if success:
-            print(f"\n[SUCESSO] {response['msg']}")
-
-            admin = response.get('admin', {})
-            admin_name = admin.name if hasattr(admin, 'name') else admin.get('name', 'Admin')
-
-            print(f"Admin '{admin_name}' criado com sucesso.")
-        else:
-            print(f"\n[ERRO] {response.get('error', 'Erro desconhecido')}")
-
-if __name__ == "__main__":
-    create_first_admin()
-```
+1. O professor (ou admin) matricula os alunos na turma, individualmente ou por planilha (`.csv` ou `.xlsx` com as colunas `matricula` e `nome`).
+2. O sistema mostra um **código de primeiro acesso** para cada aluno novo (é possível baixar a lista em CSV). Os códigos só aparecem uma vez; se necessário, gere um novo código na tela de alunos.
+3. Na tela de login, o aluno marca "Este é meu primeiro acesso", informa matrícula, código e cria a senha.

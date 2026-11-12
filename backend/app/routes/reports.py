@@ -1,20 +1,20 @@
 from flask import request, jsonify, Blueprint
-from flask_jwt_extended import get_jwt
+
+from app.services.classroom_service import ClassroomService
 from app.services.reports_service import ReportService
-from app.utils.decorators import role_required
+from app.services.submission_service import ScenarioDatabaseService
+from app.utils.decorators import role_required, current_user
+from app.utils.serializers import serialize_submission
 
 reports_bp = Blueprint('reports', __name__)
 
-def serialize_submission_report(s):
-    if not s: return None
-    return {
-        "id": s.id,
-        "student_id": s.student_id,
-        "question_id": s.question_id,
-        "time_spent_seconds": s.time_spent_seconds,
-        "submitted_query": s.submitted_query,
-        "timestamp": s.timestamp.isoformat() if hasattr(s, 'timestamp') else None
-    }
+
+def _deny_student_access(student_id):
+    """Professores só veem relatórios de alunos matriculados nas suas turmas."""
+    role, user_id = current_user()
+    if role == 'teacher' and not ClassroomService.teacher_has_student(user_id, student_id):
+        return jsonify({"error": "Acesso negado. O aluno não pertence às suas turmas."}), 403
+    return None
 
 
 # MÉTRICAS GLOBAIS E DE TURMA (ADMIN / PROFESSORES)
@@ -23,138 +23,99 @@ def serialize_submission_report(s):
 @role_required('admin', 'teacher')
 def get_global_metrics():
     """
-    Retorna estatísticas detalhadas de acerto, tempo e tentativas por questão.
-    Aceita filtros via Query Params: ?scenario_id=1 & class_id=3 & year_semester=2026/1 & question_id=10
+    Estatísticas agregadas por questão (sem identificar alunos).
+    Filtros: ?scenario_id=1&class_id=3&year_semester=2026/1&question_id=10
+    Professores só veem dados das próprias turmas.
     """
-    scenario_id = request.args.get('scenario_id', type=int)
     class_id = request.args.get('class_id', type=int)
-    year_semester = request.args.get('year_semester', type=str)
-    question_id = request.args.get('question_id', type=int)
+    role, user_id = current_user()
+    if class_id and role == 'teacher' and not ClassroomService.verify_class_ownership(class_id, user_id):
+        return jsonify({"error": "Acesso negado. Você não é o proprietário desta turma."}), 403
 
     success, result = ReportService.get_question_metrics(
-        scenario_id=scenario_id, 
-        class_id=class_id, 
-        year_semester=year_semester, 
-        question_id=question_id
+        scenario_id=request.args.get('scenario_id', type=int),
+        class_id=class_id,
+        year_semester=request.args.get('year_semester', type=str),
+        question_id=request.args.get('question_id', type=int),
+        # Professores veem apenas dados dos alunos das próprias turmas.
+        teacher_id=user_id if role == 'teacher' else None,
     )
-    
-    if success:
-        return jsonify(result), 200
-    return jsonify(result), 500
+    return jsonify(result), 200 if success else 500
 
-
-# RELATÓRIOS ESPECÍFICOS DO ALUNO (ESTUDANTES)
-
-@reports_bp.route('/me/submissions/correct/latest', methods=['GET'])
-@role_required('student')
-def get_my_latest_correct_submissions():
-    """"
-    Retorna as últimas submissões corretas do usuário logado, com detalhes como tempo gasto e query submetida.
-    Filtros opcionais: ?scenario_id=1 & question_id=10
-    """
-    claims = get_jwt()
-    student_id = claims.get('user_id')
-    
-    scenario_id = request.args.get('scenario_id', type=int)
-    question_id = request.args.get('question_id', type=int)
-
-    success, result = ReportService.get_user_last_correct_submissions(
-        student_id=student_id, 
-        question_id=question_id, 
-        scenario_id=scenario_id
-    )
-    
-    if success:
-        return jsonify([serialize_submission_report(s) for s in result]), 200
-    return jsonify(result), 500
-
-@reports_bp.route('/me/questions/<int:question_id>/engagement', methods=['GET'])
-@role_required('student')
-def get_my_question_engagement(question_id):
-    """
-    Retorna o total de tentativas e tempo gasto pelo usuário logado em uma questão específica.
-    """
-    claims = get_jwt()
-    student_id = claims.get('user_id')
-    
-    success, result = ReportService.get_user_question_engagement(student_id, question_id)
-    if success:
-        return jsonify(result), 200
-    return jsonify(result), 500
-
-@reports_bp.route('/me/progress', methods=['GET'])
-@role_required('student')
-def get_my_progress():
-    """
-    Retorna a quantidade total de questões e quantas o aluno resolveu.
-    Filtro opcional: ?scenario_id=1
-    """
-    claims = get_jwt()
-    student_id = claims.get('user_id')
-    scenario_id = request.args.get('scenario_id', type=int)
-
-    success, result = ReportService.get_progress_summary(student_id, scenario_id)
-    if success:
-        return jsonify(result), 200
-    return jsonify(result), 500
-
-
-# RELATÓRIOS DO ALUNO VISTOS PELO PROFESSOR
-
-@reports_bp.route('/students/<int:student_id>/progress', methods=['GET'])
-@role_required('admin', 'teacher')
-def get_student_progress(student_id):
-    """
-    Permite ao professor/admin verificar o progresso de um aluno específico.
-    Filtro opcional: ?scenario_id=1
-    """
-    scenario_id = request.args.get('scenario_id', type=int)
-
-    success, result = ReportService.get_progress_summary(student_id, scenario_id)
-    if success:
-        return jsonify(result), 200
-    return jsonify(result), 500
-
-@reports_bp.route('/students/<int:student_id>/questions/<int:question_id>/engagement', methods=['GET'])
-@role_required('admin', 'teacher')
-def get_student_question_engagement(student_id, question_id):
-    """
-    Permite ao professor ver as tentativas/tempo de um aluno em uma questão.
-    """
-    success, result = ReportService.get_user_question_engagement(student_id, question_id)
-    if success:
-        return jsonify(result), 200
-    return jsonify(result), 500
 
 @reports_bp.route('/classes/<int:class_id>/questions/details', methods=['GET'])
 @role_required('admin', 'teacher')
 def get_class_questions_detail(class_id):
-    """
-    Retorna o detalhamento por questão de uma turma específica.
-    Mostra quais alunos acertaram, erraram, o tempo que levaram e métricas como 
-    taxa de acerto e tentativas médias antes do acerto.
-    """
+    role, user_id = current_user()
+    if role == 'teacher' and not ClassroomService.verify_class_ownership(class_id, user_id):
+        return jsonify({"error": "Acesso negado. Você não é o proprietário desta turma."}), 403
     success, result = ReportService.get_class_questions_detail(class_id)
-    
+    return jsonify(result), 200 if success else 500
+
+
+# RELATÓRIOS DO PRÓPRIO ALUNO
+
+@reports_bp.route('/me/submissions/correct/latest', methods=['GET'])
+@role_required('student')
+def get_my_latest_correct_submissions():
+    _, student_id = current_user()
+    success, result = ReportService.get_user_last_correct_submissions(
+        student_id=student_id,
+        question_id=request.args.get('question_id', type=int),
+        scenario_id=request.args.get('scenario_id', type=int),
+    )
     if success:
-        return jsonify(result), 200
-    
+        return jsonify([serialize_submission(s) for s in result]), 200
     return jsonify(result), 500
 
-@reports_bp.route('/<slug>/progress-submissions', methods=['GET'])
+
+@reports_bp.route('/me/questions/<int:question_id>/engagement', methods=['GET'])
+@role_required('student')
+def get_my_question_engagement(question_id):
+    _, student_id = current_user()
+    success, result = ReportService.get_user_question_engagement(student_id, question_id)
+    return jsonify(result), 200 if success else 500
+
+
+@reports_bp.route('/me/progress', methods=['GET'])
+@role_required('student')
+def get_my_progress():
+    _, student_id = current_user()
+    success, result = ReportService.get_progress_summary(student_id, request.args.get('scenario_id', type=int))
+    return jsonify(result), 200 if success else 500
+
+
+@reports_bp.route('/me/<slug>/progress-submissions', methods=['GET'])
 @role_required('student')
 def get_progress_submissions(slug):
-    """"
-    Retorna as submissões de um aluno em um cenário específico, mostrando o progresso detalhado por questão.
-    """
-    claims = get_jwt()
-    student_id = claims.get('user_id')
-    
-    success_scenario, scenario = ReportService.get_scenario_by_slug(slug)
-    if not success_scenario:
+    """Última consulta correta do aluno em cada questão de um cenário."""
+    _, student_id = current_user()
+    found, scenario = ScenarioDatabaseService.get_scenario_by_slug(slug)
+    if not found:
         return jsonify({"error": scenario}), 404
-
     success, result = ReportService.get_progress_submissions(student_id, scenario.id)
     if success:
         return jsonify(result), 200
     return jsonify({"error": result}), 500
+
+
+# RELATÓRIOS DO ALUNO VISTOS PELO PROFESSOR / ADMIN
+
+@reports_bp.route('/students/<int:student_id>/progress', methods=['GET'])
+@role_required('admin', 'teacher')
+def get_student_progress(student_id):
+    denied = _deny_student_access(student_id)
+    if denied:
+        return denied
+    success, result = ReportService.get_progress_summary(student_id, request.args.get('scenario_id', type=int))
+    return jsonify(result), 200 if success else 500
+
+
+@reports_bp.route('/students/<int:student_id>/questions/<int:question_id>/engagement', methods=['GET'])
+@role_required('admin', 'teacher')
+def get_student_question_engagement(student_id, question_id):
+    denied = _deny_student_access(student_id)
+    if denied:
+        return denied
+    success, result = ReportService.get_user_question_engagement(student_id, question_id)
+    return jsonify(result), 200 if success else 500

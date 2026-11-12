@@ -1,23 +1,24 @@
 import { TableDataWithTotal } from './Table';
+import { AdaptiveState } from './models';
 
 /**
- * dados resultantes da consulta
+ * Resultado da execução de uma consulta
  */
 export interface QueryResult {
   data: TableDataWithTotal | null;
-  error: string;
+  error: string | null;
 }
 
 /**
- * dados resultantes da consulta
- * inica se está correta ou não
- * erros ou mensagens de validação
- * além dos dados das queries
+ * Resposta da validação de uma consulta: se está correta, mensagens,
+ * os resultados das consultas e (para alunos) o novo estado da trilha.
  */
 export interface ValidateResponse {
   valid: boolean;
-  message?: string;
-  error?: string;
-  result_table?: QueryResult;
-  expected_table?: QueryResult;
+  message?: string | null;
+  error?: string | null;
+  statement?: string;
+  result_table?: QueryResult | null;
+  expected_table?: QueryResult | null;
+  adaptive_state?: AdaptiveState;
 }

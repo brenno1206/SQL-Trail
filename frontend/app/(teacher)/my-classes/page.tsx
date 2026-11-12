@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import Footer from '@/components/Footer';
@@ -7,6 +6,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { teacherService } from '@/lib/services/teacher';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Toast from '@/components/Toast';
+import AccessCodesModal from '@/components/AccessCodesModal';
+import { getErrorMessage } from '@/lib/api';
 import {
   FaMap,
   IoIosWarning,
@@ -16,9 +17,21 @@ import {
   IoMdCloseCircleOutline,
 } from '@/assets/icons';
 
-import { Class, Scenario, Question, Student } from '@/types/models';
+import {
+  Class,
+  Scenario,
+  Question,
+  Student,
+  EnrollmentReport,
+} from '@/types/models';
 import { Notification } from '@/types/ui';
-import { DetailedQuestionMetric } from '@/types/metrics';
+import { DetailedQuestionMetric, StudentQuestionDetail } from '@/types/metrics';
+
+type EnrichedMetric = DetailedQuestionMetric & {
+  question_order: number;
+  is_special: boolean;
+  scenario_name: string;
+};
 /**
  * Página de gerenciamento de turmas para professores, permitindo criar, editar e excluir turmas, além de visualizar detalhes 
  * como alunos matriculados e métricas de desempenho. Os professores podem:
@@ -66,6 +79,16 @@ export default function TeacherClassesPage() {
   });
 
   const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [accessReport, setAccessReport] = useState<EnrollmentReport | null>(
+    null,
+  );
+
+  /** Exibe os códigos de primeiro acesso dos alunos criados e os avisos da matrícula */
+  const showReport = (report: EnrollmentReport) => {
+    if (report.created?.length || report.warnings?.length) {
+      setAccessReport(report);
+    }
+  };
 
   const showNotification = (
     message: string,
@@ -85,12 +108,11 @@ export default function TeacherClassesPage() {
       setClasses(classesData);
       setScenarios(scenariosData);
       setQuestions(questionsData);
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao carregar dados iniciais.';
-      showNotification(errorMessage, 'error');
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao carregar dados iniciais.'),
+        'error',
+      );
     } finally {
       setLoading(false);
     }
@@ -106,8 +128,11 @@ export default function TeacherClassesPage() {
     try {
       const students = await teacherService.getStudentsInClass(classId);
       setClassStudents(students);
-    } catch (error: any) {
-      showNotification(`Erro ao buscar alunos da turma.${error}`, 'error');
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao buscar alunos da turma.'),
+        'error',
+      );
     } finally {
       setIsLoadingStudents(false);
     }
@@ -118,9 +143,11 @@ export default function TeacherClassesPage() {
     try {
       const metrics = await teacherService.getClassQuestionsDetail(classId);
       setClassMetrics(metrics);
-    } catch (error: any) {
-      console.error(`Erro ao buscar métricas da turma.${error}`, error);
-      showNotification(`Erro ao buscar métricas da turma.${error}`, 'error');
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao buscar métricas da turma.'),
+        'error',
+      );
     } finally {
       setIsLoadingMetrics(false);
     }
@@ -138,8 +165,8 @@ export default function TeacherClassesPage() {
       showNotification('Turma criada com sucesso!', 'success');
       setIsCreateModalOpen(false);
       await loadData();
-    } catch (error: any) {
-      showNotification(`Erro ao criar turma.${error}`, 'error');
+    } catch (error) {
+      showNotification(getErrorMessage(error, 'Erro ao criar turma.'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -160,8 +187,11 @@ export default function TeacherClassesPage() {
       setIsEditMode(false);
       await loadData();
       setSelectedClass({ ...selectedClass, ...payload });
-    } catch (error: any) {
-      showNotification(`Erro ao atualizar turma.${error}`, 'error');
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao atualizar turma.'),
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -181,8 +211,11 @@ export default function TeacherClassesPage() {
       showNotification('Turma excluída com sucesso!', 'success');
       setSelectedClass(null);
       await loadData();
-    } catch (error: any) {
-      showNotification(`Erro ao excluir turma.${error}`, 'error');
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao excluir turma.'),
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -193,12 +226,22 @@ export default function TeacherClassesPage() {
     if (!selectedClass) return;
     setIsSubmitting(true);
     try {
-      await teacherService.enrollStudent(selectedClass.id, enrollData);
-      showNotification('Aluno matriculado com sucesso!', 'success');
+      const report = await teacherService.enrollStudent(
+        selectedClass.id,
+        enrollData,
+      );
+      showNotification(
+        report.msg || 'Aluno matriculado com sucesso!',
+        'success',
+      );
+      showReport(report);
       setEnrollData({ matricula: '', nome: '' });
       await loadClassStudents(selectedClass.id);
-    } catch (error: any) {
-      showNotification(`Erro ao matricular aluno.${error}`, 'error');
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao matricular aluno.'),
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -209,13 +252,23 @@ export default function TeacherClassesPage() {
     if (!selectedClass || !bulkFile) return;
     setIsSubmitting(true);
     try {
-      await teacherService.enrollStudentsBulk(selectedClass.id, bulkFile);
-      showNotification('Alunos importados com sucesso!', 'success');
+      const report = await teacherService.enrollStudentsBulk(
+        selectedClass.id,
+        bulkFile,
+      );
+      showNotification(
+        report.message || 'Alunos importados com sucesso!',
+        'success',
+      );
+      showReport(report);
       setBulkFile(null);
       (document.getElementById('file-upload') as HTMLInputElement).value = '';
       await loadClassStudents(selectedClass.id);
-    } catch (error: any) {
-      showNotification(`Erro ao processar arquivo.${error}`, 'error');
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao processar arquivo.'),
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -236,8 +289,11 @@ export default function TeacherClassesPage() {
       await teacherService.removeEnrollment(selectedClass.id, studentId);
       showNotification('Matrícula removida com sucesso.', 'success');
       await loadClassStudents(selectedClass.id);
-    } catch (error: any) {
-      showNotification(`Erro ao remover matrícula.${error}`, 'error');
+    } catch (error) {
+      showNotification(
+        getErrorMessage(error, 'Erro ao remover matrícula.'),
+        'error',
+      );
     }
   };
 
@@ -259,11 +315,6 @@ export default function TeacherClassesPage() {
   const openCreateModal = () => {
     setFormData({ class_name: '', subject: '', year_semester: '' });
     setIsCreateModalOpen(true);
-  };
-
-  const getStudentName = (studentId: number) => {
-    const student = classStudents.find((s) => s.id === studentId);
-    return student ? student.name : `Matrícula Desconhecida (${studentId})`;
   };
 
   const groupedMetrics = useMemo(() => {
@@ -302,7 +353,7 @@ export default function TeacherClassesPage() {
         ).toFixed(1)
       : 0;
 
-  const renderMetricCard = (m: any) => (
+  const renderMetricCard = (m: EnrichedMetric) => (
     <div
       key={m.question_id}
       className="bg-white border p-4 rounded-lg shadow-sm flex flex-col gap-3"
@@ -329,7 +380,7 @@ export default function TeacherClassesPage() {
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-gray-600 bg-gray-50 p-3 rounded border border-gray-100">
         <div>
           <span className="font-semibold block text-gray-500">
-            Acertos / Tentaram:
+            Alunos que acertaram / tentaram:
           </span>
           {m.metrics.students_correct_count} de{' '}
           {m.metrics.students_attempted_count} alunos
@@ -355,16 +406,17 @@ export default function TeacherClassesPage() {
             Acertaram:
           </span>
           <ul className="text-xs text-green-700 space-y-1 max-h-28 overflow-y-auto custom-scrollbar pr-1">
-            {m.students.correct_submissions.map((s: any) => (
+            {m.students.correct_submissions.map((s: StudentQuestionDetail) => (
               <li
                 key={s.student_id}
                 className="flex justify-between border-b border-green-100/50 pb-1 last:border-0"
               >
                 <span className="truncate mr-2 font-medium">
-                  {getStudentName(s.student_id)}
+                  {s.student_name || `Aluno #${s.student_id}`}
                 </span>
                 <span className="shrink-0 text-green-600">
-                  {s.correct_time_spent_seconds}s ({s.total_attempts} tent.)
+                  {s.correct_time_spent_seconds}s ({s.attempts_until_correct}{' '}
+                  tent. até acertar)
                 </span>
               </li>
             ))}
@@ -381,16 +433,17 @@ export default function TeacherClassesPage() {
             <IoIosWarning className="text-base text-red-600" /> Ainda Tentando:
           </span>
           <ul className="text-xs text-red-700 space-y-1 max-h-28 overflow-y-auto custom-scrollbar pr-1">
-            {m.students.still_trying.map((s: any) => (
+            {m.students.still_trying.map((s: StudentQuestionDetail) => (
               <li
                 key={s.student_id}
                 className="flex justify-between border-b border-red-100/50 pb-1 last:border-0"
               >
                 <span className="truncate mr-2 font-medium">
-                  {getStudentName(s.student_id)}
+                  {s.student_name || `Aluno #${s.student_id}`}
                 </span>
                 <span className="shrink-0 text-red-600">
-                  ({s.total_attempts} tent.)
+                  ({s.total_attempts} tent.
+                  {s.skips ? `, ${s.skips} pulo(s)` : ''})
                 </span>
               </li>
             ))}
@@ -745,14 +798,14 @@ export default function TeacherClassesPage() {
                     >
                       <label className="flex items-center gap-1 text-xs font-medium text-gray-600">
                         <IoMdAttach className="text-base" /> Importar em Lote
-                        (CSV/XLSX com colunas &apos;matricula&apos; e
+                        (CSV ou XLSX com colunas &apos;matricula&apos; e
                         &apos;nome&apos;)
                       </label>
                       <div className="flex gap-2">
                         <input
                           type="file"
                           id="file-upload"
-                          accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                           onChange={(e) =>
                             setBulkFile(
                               e.target.files ? e.target.files[0] : null,
@@ -833,7 +886,8 @@ export default function TeacherClassesPage() {
                       <div className="bg-blue-100 p-4 rounded-lg flex justify-between items-center border border-blue-200 shrink-0 shadow-sm">
                         <div>
                           <p className="text-sm text-blue-800 font-bold mb-1">
-                            Taxa de Acerto Geral (Média)
+                            Taxa de acerto média (alunos que acertaram /
+                            tentaram)
                           </p>
                           <p className="text-3xl font-black text-blue-700">
                             {avgClassAccuracy}%
@@ -915,6 +969,14 @@ export default function TeacherClassesPage() {
             </div>
           </div>
         </div>
+      )}
+      {accessReport && (
+        <AccessCodesModal
+          codes={accessReport.created || []}
+          warnings={accessReport.warnings || []}
+          title="Resultado da matrícula"
+          onClose={() => setAccessReport(null)}
+        />
       )}
     </ProtectedRoute>
   );
