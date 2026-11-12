@@ -37,3 +37,7 @@ frontend/.next/
 .env.*
 !.env.example
 frontend/*.tsbuildinfo
+
+# --- vs code ---
+
+.vscode/
