@@ -109,15 +109,15 @@ Principais serviços:
 
 ## 📋 TO DOs
 
-- Corrigir consultas com Árvore de Sintaxe ou algo parecido
-- Unificar as tabelas de usuários: uma tabela `user` e outra `role`, em vez de uma tabela por papel
-- Adicionar mais cenários de questões
-- Avaliar a troca do PostgreSQL (Supabase) por MySQL nos cenários
-- Aplicar a Teoria de Resposta ao Item (TRI) na calibração da dificuldade das questões
-- Coletar o coeficiente de rendimento e as notas dos alunos em disciplinas de Banco de Dados
+<!-- - Corrigir/Analisar consultas com Árvore de Sintaxe Abstrata ou algo parecido -->
+
 - Adicionar cenários NoSQL com MongoDB
-- Analisar as consultas com árvores de sintaxe abstrata
-- Testar a aplicação com alunos para coletar dados para a TRI
+- Avaliar a troca do PostgreSQL (Supabase) por MySQL nos cenários
+- Adicionar mais 1 cenário de questões
+  <!-- - Aplicar a Teoria de Resposta ao Item (TRI) na calibração da dificuldade das questões -->
+  <!-- - Coletar o coeficiente de rendimento e as notas dos alunos em disciplinas de Banco de Dados
+- Testar a aplicação com alunos para coletar dados para a TRI -->
+<!-- - Unificar as tabelas de usuários: uma tabela `user` e outra `role`, em vez de uma tabela por papel -->
 
 ---
 
